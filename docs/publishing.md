@@ -44,6 +44,7 @@ lawnchair.publish.repository=Lazygarde/lawnchair
 | `:dagger` | `dagger` |
 | `:concurrent` | `concurrent` |
 | `:modules:widgetpicker` | `widgetpicker` |
+| `:launcher-ui` | `launcher-ui` |
 
 The `systemui-` prefix exists because the upstream module names (`log`, `common`,
 `utils`, …) are too generic to publish unqualified.
@@ -139,6 +140,36 @@ dependencies {
 
 Inter-module dependencies resolve automatically: `systemui-common` pulls in
 `systemui-utils`, `compatlib-vbaklava` pulls in the whole `compatlib-v*` chain, and so on.
+
+### Hosting the launcher
+
+`launcher-ui` ships the home screen, so an app that depends on it becomes a launcher. Four things are on the host:
+
+**1. The Application class.** `LawnchairApp` builds the Dagger graph the launcher runs on, and its superclass captures the host's package name before any content provider starts. Extend it, do not replace it:
+
+```kotlin
+class MyApp : LawnchairApp()
+```
+
+```xml
+<application android:name=".MyApp" ... />
+```
+
+**2. The `<application>` identity attributes.** The library declares none of `android:icon`, `label`, `theme`, `backupAgent` or `fullBackupContent`, so the host has to. It does need `android:largeHeap="@bool/config_largeHeap"` and `android:hardwareAccelerated="true"`.
+
+**3. Three resources the library reads but cannot know.** `resValue` is the easiest way:
+
+```kotlin
+resValue("string", "derived_app_name", "My Launcher")
+resValue("string", "launcher_component", "$applicationId/app.lawnchair.LawnchairLauncher")
+resValue("string", "config_release_channel", "play")
+```
+
+`launcher_component` keeps the launcher out of its own app drawer; `config_release_channel` set to `play` turns off the parts of the settings UI a Play Store build must not ship.
+
+**4. JitPack, and core library desugaring.** Some of Lawnchair's dependencies come from `https://jitpack.io`, so the host repository list needs it. The library is built with desugaring, so the host needs `isCoreLibraryDesugaringEnabled = true` and `coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:...")`.
+
+`app.lawnchair.LawnchairLauncher` is declared in the library manifest with `CATEGORY_HOME` and `CATEGORY_LAUNCHER`. A host that already has its own entry activity will want to drop `CATEGORY_LAUNCHER` from it, which means redeclaring the activity with `tools:node="replace"`.
 
 ### Caveats
 

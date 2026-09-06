@@ -74,19 +74,14 @@
     <uses-permission android:name="${applicationId}.permission.WRITE_SETTINGS" />
     <uses-permission android:name="${applicationId}.permission.GRID_CONTROL" />
 
-    <application
-        android:backupAgent="com.android.launcher3.LauncherBackupAgent"
-        android:name="app.lawnchair.LawnchairApp"
-        android:fullBackupOnly="true"
-        android:backupInForeground="true"
-        android:fullBackupContent="@xml/backupscheme"
-        android:hardwareAccelerated="true"
-        android:icon="@drawable/ic_launcher_home"
-        android:label="@string/derived_app_name"
-        android:largeHeap="@bool/config_largeHeap"
-        android:restoreAnyVersion="true"
-        android:supportsRtl="true"
-        tools:replace="android:label">
+    <!--
+      The <application> identity attributes (name, icon, label, theme, backupAgent,
+      fullBackupContent, ...) used to sit here. They moved to the app's AndroidManifest.xml when
+      this source set became part of the :launcher-ui library: a library that declared them would
+      force them on every host and make the merger fail unless the host wrote tools:replace for
+      each one.
+    -->
+    <application>
 
         <!-- Intent received when a session is committed -->
         <receiver
