@@ -46,6 +46,7 @@
         -->
         <activity
             android:name="app.lawnchair.LawnchairLauncher"
+            android:theme="@style/AppTheme"
             android:launchMode="singleTask"
             android:clearTaskOnLaunch="true"
             android:stateNotNeeded="true"

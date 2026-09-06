@@ -171,6 +171,8 @@ resValue("string", "config_release_channel", "play")
 
 `app.lawnchair.LawnchairLauncher` is declared in the library manifest with `CATEGORY_HOME` and `CATEGORY_LAUNCHER`. A host that already has its own entry activity will want to drop `CATEGORY_LAUNCHER` from it, which means redeclaring the activity with `tools:node="replace"`.
 
+If you do redeclare it, keep `android:theme="@style/AppTheme"`. `tools:node="replace"` swaps the whole element rather than merging into it, and Launcher3's views read attributes that only `AppTheme` defines: under the host's own theme the launcher dies inflating `DeleteDropTarget` with `UnsupportedOperationException: Failed to resolve attribute`.
+
 ### Caveats
 
 - **Hidden APIs.** Several modules compile against the AOSP stubs in `prebuilts/libs`
