@@ -27,7 +27,7 @@ import com.android.app.search.LayoutType.SMALL_ICON_HORIZONTAL_TEXT
 import com.android.app.search.LayoutType.TEXT_HEADER
 import com.android.app.search.LayoutType.THUMBNAIL
 import com.android.app.search.LayoutType.WIDGET_LIVE
-import com.android.launcher3.HostPackage
+import com.android.launcher3.LauncherHost
 import com.android.launcher3.Utilities
 import com.android.launcher3.allapps.BaseAllAppsAdapter
 import com.android.launcher3.search.SearchAlgorithm
@@ -77,7 +77,7 @@ sealed class LawnchairSearchAlgorithm(
     protected fun transformSearchResults(results: List<SearchTargetCompat>): List<SearchAdapterItem> {
         val filtered = results
             .asSequence()
-            .filter { it.packageName != HostPackage.get() }
+            .filter { it.packageName != LauncherHost.get() }
             .filter { LawnchairSearchAdapterProvider.viewTypeMap[it.layoutType] != null }
             .removeDuplicateDividers()
             .toList()

@@ -1,0 +1,37 @@
+/*
+ * Version and channel facts shared by the launcher library (:launcher-ui) and the app that
+ * ships it. They used to live in the root build script, but the library needs them too:
+ * BuildConfig.VERSION_CODE / VERSION_NAME do not exist for library modules, so :launcher-ui
+ * declares them as buildConfigFields from the values below.
+ */
+
+def buildCommit = providers.exec {
+    commandLine('git', 'rev-parse', '--short=7', 'HEAD')
+}.standardOutput.asText.get().trim()
+
+def ciBuild = System.getenv("CI") == "true"
+def ciRef = System.getenv("GITHUB_REF") ?: ""
+def ciRunNumber = System.getenv("GITHUB_RUN_NUMBER") ?: ""
+def isReleaseBuild = ciBuild
+        && (ciRef.endsWith("-alpha")
+        || ciRef.endsWith("-beta")
+        || ciRef.endsWith("-rc")
+        || ciRef.endsWith("-stable"))
+def devReleaseName = ciBuild ? "Dev.(#${ciRunNumber})" : "Dev.(${buildCommit})"
+
+def version = "16"
+def releaseName = "Development 5.1"
+
+ext.launcher = [
+        /*
+         * Lawnchair Launcher 16.0 Development 5.1
+         * see CONTRIBUTING.md#versioning-scheme
+         */
+        versionCode     : 16_00_01_05_01,
+        versionDisplayName: "${version}.${isReleaseBuild ? releaseName : devReleaseName}".toString(),
+        commitHash      : buildCommit,
+        quickstepMinSdk : "29",
+        quickstepMaxSdk : "36",
+]
+ext.launcher.versionName = ext.launcher.versionDisplayName
+ext.launcher.majorVersion = ext.launcher.versionDisplayName.split("\\.")[0]

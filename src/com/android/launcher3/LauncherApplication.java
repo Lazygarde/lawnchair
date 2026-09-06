@@ -35,7 +35,7 @@ public class LauncherApplication extends Application {
         super.attachBaseContext(base);
         // Runs before any content provider of this app, which is the earliest point at which
         // the launcher code can learn the hosting app's package name.
-        HostPackage.init(base);
+        LauncherHost.init(base);
     }
 
     @Override

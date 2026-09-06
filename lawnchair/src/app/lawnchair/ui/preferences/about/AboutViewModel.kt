@@ -7,7 +7,7 @@ import app.lawnchair.preferences.PreferenceManager
 import app.lawnchair.preferences2.PreferenceManager2
 import app.lawnchair.preferences2.firstCached
 import com.android.launcher3.BuildConfig
-import com.android.launcher3.HostPackage
+import com.android.launcher3.LauncherHost
 import com.android.launcher3.R
 import java.io.File
 import kotlinx.coroutines.Dispatchers
@@ -63,7 +63,7 @@ class AboutViewModel(
         // Check if the build variant is Nightly
         // AND check if user has enabled auto updater (available to Nightly variant)
         // OR check if user has overridden it in debug flags (available to All variant)
-        if (HostPackage.get().contains("nightly") && prefs2.autoUpdaterNightly.firstCached()) {
+        if (LauncherHost.get().contains("nightly") && prefs2.autoUpdaterNightly.firstCached()) {
             nightlyBuildsRepository.checkForUpdate()
             viewModelScope.launch {
                 nightlyBuildsRepository.updateState.collect { state ->

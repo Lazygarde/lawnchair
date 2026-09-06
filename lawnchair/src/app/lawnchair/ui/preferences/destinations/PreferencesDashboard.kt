@@ -89,7 +89,7 @@ import app.lawnchair.ui.util.addIf
 import app.lawnchair.util.isDefaultLauncher
 import app.lawnchair.util.restartLauncher
 import com.android.launcher3.BuildConfig
-import com.android.launcher3.HostPackage
+import com.android.launcher3.LauncherHost
 import com.android.launcher3.R
 import com.android.launcher3.util.MSDLPlayerWrapper
 import com.google.android.msdl.data.model.MSDLToken
@@ -120,7 +120,7 @@ fun PreferencesDashboard(
     ) {
         AnnouncementPreference()
 
-        if (HostPackage.get().contains("nightly") || BuildConfig.DEBUG) {
+        if (LauncherHost.get().contains("nightly") || BuildConfig.DEBUG) {
             PreferencesDebugWarning()
             Spacer(modifier = Modifier.height(8.dp))
         }

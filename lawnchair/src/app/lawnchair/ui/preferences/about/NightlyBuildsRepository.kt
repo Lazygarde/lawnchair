@@ -8,7 +8,7 @@ import androidx.core.content.FileProvider
 import androidx.core.net.toUri
 import app.lawnchair.util.getApkVersionComparison
 import com.android.launcher3.BuildConfig
-import com.android.launcher3.HostPackage
+import com.android.launcher3.LauncherHost
 import com.android.launcher3.Utilities
 import java.io.File
 import java.io.IOException
@@ -136,7 +136,7 @@ class NightlyBuildsRepository(
         }
         val uri = FileProvider.getUriForFile(
             applicationContext,
-            "${HostPackage.get()}.fileprovider",
+            "${LauncherHost.get()}.fileprovider",
             file,
         )
         val intent = Intent(Intent.ACTION_VIEW).apply {

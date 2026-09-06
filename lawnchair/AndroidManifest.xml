@@ -47,13 +47,13 @@
     <uses-sdk tools:overrideLibrary="com.kieronquinn.app.smartspacer.sdk" />
 
     <permission
-        android:name="${packageName}.permission.READ_SETTINGS"
+        android:name="${applicationId}.permission.READ_SETTINGS"
         tools:node="remove" />
     <permission
-        android:name="${packageName}.permission.WRITE_SETTINGS"
+        android:name="${applicationId}.permission.WRITE_SETTINGS"
         tools:node="remove" />
     <permission
-        android:name="${packageName}.permission.HOTSEAT_EDU"
+        android:name="${applicationId}.permission.HOTSEAT_EDU"
         tools:node="remove" />
 
     <application>

@@ -18,6 +18,7 @@ import androidx.compose.material.icons.rounded.Support
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.ui.graphics.vector.ImageVector
 import com.android.launcher3.BuildConfig
+import com.android.launcher3.LauncherHost
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -56,7 +57,7 @@ data class Announcement(
             if (active.not()) return false
             if (text.isBlank()) return false
             if (test && BuildConfig.DEBUG.not()) return false
-            if (channel != null && channel != BuildConfig.FLAVOR_channel) return false
+            if (channel != null && channel != LauncherHost.releaseChannel()) return false
             return true
         }
 }

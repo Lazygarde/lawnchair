@@ -47,7 +47,7 @@ import app.lawnchair.util.restartLauncher
 import app.lawnchair.util.unsafeLazy
 import app.lawnchair.views.ComposeBottomSheet
 import com.android.launcher3.BuildConfig
-import com.android.launcher3.HostPackage
+import com.android.launcher3.LauncherHost
 import com.android.launcher3.InvariantDeviceProfile
 import com.android.launcher3.Launcher
 import com.android.launcher3.LauncherApplication
@@ -279,7 +279,7 @@ class LawnchairApp : LauncherApplication() {
         }
 
         fun getUriForFile(context: Context, file: File): Uri {
-            return FileProvider.getUriForFile(context, "${HostPackage.get()}.fileprovider", file)
+            return FileProvider.getUriForFile(context, "${LauncherHost.get()}.fileprovider", file)
         }
     }
 }

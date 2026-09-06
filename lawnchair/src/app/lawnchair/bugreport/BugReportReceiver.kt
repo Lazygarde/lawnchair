@@ -15,7 +15,7 @@ import android.net.Uri
 import android.widget.Toast
 import androidx.core.content.ContextCompat
 import app.lawnchair.util.requireSystemService
-import com.android.launcher3.HostPackage
+import com.android.launcher3.LauncherHost
 import com.android.launcher3.R
 
 class BugReportReceiver : BroadcastReceiver() {
@@ -44,15 +44,15 @@ class BugReportReceiver : BroadcastReceiver() {
     }
 
     companion object {
-        val NOTIFICATION_CHANNEL_ID = "${HostPackage.get()}.BugReport"
-        val STATUS_CHANNEL_ID = "${HostPackage.get()}.status"
+        val NOTIFICATION_CHANNEL_ID = "${LauncherHost.get()}.BugReport"
+        val STATUS_CHANNEL_ID = "${LauncherHost.get()}.status"
 
-        private val GROUP_KEY = "${HostPackage.get()}.crashes"
+        private val GROUP_KEY = "${LauncherHost.get()}.crashes"
         private const val GROUP_ID = 0
 
-        private val COPY_ACTION = "${HostPackage.get()}.bugreport.COPY"
-        private val UPLOAD_ACTION = "${HostPackage.get()}.bugreport.UPLOAD"
-        val UPLOAD_COMPLETE_ACTION = "${HostPackage.get()}.bugreport.UPLOAD_COMPLETE"
+        private val COPY_ACTION = "${LauncherHost.get()}.bugreport.COPY"
+        private val UPLOAD_ACTION = "${LauncherHost.get()}.bugreport.UPLOAD"
+        val UPLOAD_COMPLETE_ACTION = "${LauncherHost.get()}.bugreport.UPLOAD_COMPLETE"
 
         fun notify(context: Context, report: BugReport, uploading: Boolean = false) {
             val manager: NotificationManager = context.requireSystemService()
@@ -125,7 +125,7 @@ class BugReportReceiver : BroadcastReceiver() {
 
             if (report.link != null || fileUri == null) {
                 val copyIntent = Intent(COPY_ACTION)
-                    .setPackage(HostPackage.get())
+                    .setPackage(LauncherHost.get())
                     .putExtra("report", report)
                 val pendingCopyIntent = PendingIntent.getBroadcast(
                     context,
@@ -148,7 +148,7 @@ class BugReportReceiver : BroadcastReceiver() {
                 builder.setProgress(0, 0, true)
             } else if (report.link == null && UploaderUtils.IS_ALIVE_AVAILABLE) {
                 val uploadIntent = Intent(UPLOAD_ACTION)
-                    .setPackage(HostPackage.get())
+                    .setPackage(LauncherHost.get())
                     .putExtra("report", report)
                 val pendingUploadIntent = PendingIntent.getBroadcast(
                     context,

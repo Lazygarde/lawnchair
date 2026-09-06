@@ -54,7 +54,7 @@ import app.lawnchair.ui.preferences.components.HiddenAppsInSearch
 import app.lawnchair.ui.preferences.data.liveinfo.LiveInformationManager
 import app.lawnchair.util.kotlinxJson
 import app.lawnchair.views.overlay.FullScreenOverlayMode
-import com.android.launcher3.HostPackage
+import com.android.launcher3.LauncherHost
 import com.android.launcher3.InvariantDeviceProfile
 import com.android.launcher3.InvariantDeviceProfile.INDEX_DEFAULT
 import com.android.launcher3.LauncherAppState
@@ -854,7 +854,7 @@ class PreferenceManager2 @Inject constructor(
 
     val autoUpdaterNightly = preference(
         key = booleanPreferencesKey(name = "enable_nightly_auto_updater"),
-        defaultValue = if (HostPackage.get().contains("nightly")) {
+        defaultValue = if (LauncherHost.get().contains("nightly")) {
             context.resources.getBoolean(R.bool.config_default_enable_nightly_auto_updater)
         } else {
             false

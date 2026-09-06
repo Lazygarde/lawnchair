@@ -20,7 +20,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Binder
-import com.android.launcher3.HostPackage
+import com.android.launcher3.LauncherHost
 import com.android.launcher3.R
 import com.android.launcher3.dagger.LauncherComponentProvider.appComponent
 import com.android.launcher3.util.ContentProviderProxy
@@ -64,6 +64,6 @@ class LauncherCustomizationProvider : ContentProviderProxy() {
 
     companion object {
 
-        private val PERM_GRID_CONTROL = "${HostPackage.get()}.permission.GRID_CONTROL"
+        private val PERM_GRID_CONTROL = "${LauncherHost.get()}.permission.GRID_CONTROL"
     }
 }

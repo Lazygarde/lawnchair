@@ -1,0 +1,252 @@
+/*
+ * The launcher UI, as a publishable library.
+ *
+ * Everything that used to be compiled straight into the root application module -- Launcher3
+ * core, the Lawnchair layer on top of it, and quickstep -- lives here instead, so an app can
+ * depend on the launcher instead of vendoring this repository. The root module keeps only what
+ * genuinely belongs to an application: the applicationId, the flavors and the signing config.
+ *
+ * The source directories are the ones already in the repo; nothing was moved on disk.
+ */
+plugins {
+    alias(libs.plugins.android.library)
+    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.kotlin.parcelize)
+    alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.google.ksp)
+    alias(libs.plugins.google.protobuf)
+    alias(libs.plugins.rikka.refine)
+}
+
+apply from: rootProject.file('gradle/launcher-version.gradle')
+
+android {
+    namespace "com.android.launcher3"
+
+    defaultConfig {
+        buildConfigField "int", "VERSION_CODE", "${launcher.versionCode}"
+        buildConfigField "String", "VERSION_NAME", "\"${launcher.versionName}\""
+        buildConfigField "String", "VERSION_DISPLAY_NAME", "\"${launcher.versionDisplayName}\""
+        buildConfigField "String", "MAJOR_VERSION", "\"${launcher.majorVersion}\""
+        buildConfigField "String", "COMMIT_HASH", "\"${launcher.commitHash}\""
+        buildConfigField "boolean", "ENABLE_AUTO_INSTALLS_LAYOUT", "false"
+
+        buildConfigField "int", "QUICKSTEP_MIN_SDK", launcher.quickstepMinSdk
+        buildConfigField "int", "QUICKSTEP_MAX_SDK", launcher.quickstepMaxSdk
+        manifestPlaceholders.quickstepMinSdk = launcher.quickstepMinSdk
+        manifestPlaceholders.quickstepMaxSdk = launcher.quickstepMaxSdk
+
+        consumerProguardFiles "consumer-rules.pro"
+    }
+
+    buildTypes {
+        debug {
+            // Debug builds have always widened the quickstep SDK range so the recents
+            // integration can be exercised outside the range shipped to users. AGP matches the
+            // library's debug variant to the app's debug build type.
+            manifestPlaceholders.quickstepMinSdk = "0"
+            manifestPlaceholders.quickstepMaxSdk = "100000"
+            buildConfigField "int", "QUICKSTEP_MIN_SDK", "0"
+            buildConfigField "int", "QUICKSTEP_MAX_SDK", "100000"
+        }
+    }
+
+    buildFeatures {
+        aidl true
+        buildConfig true
+        resValues true
+        compose true
+    }
+
+    compileOptions {
+        coreLibraryDesugaringEnabled true
+    }
+
+    // The resource overlays only work as overlays if they stay in separate source sets, the
+    // way the app has always had them: lawnchair/res deliberately redefines strings and dimens
+    // from res. Flattening them into one source set turns those into duplicate-resource errors,
+    // so the app's flavor layout is mirrored here instead. There is only ever one combination.
+    flavorDimensions += ["app", "recents"]
+
+    productFlavors {
+        lawn { dimension "app" }
+        withQuickstep { dimension "recents" }
+    }
+
+    sourceSets {
+        main {
+            manifest.srcFile "$rootDir/AndroidManifest-common.xml"
+            res.srcDirs = ["$rootDir/res", 'src/main/res']
+            java.srcDirs = [
+                "$rootDir/src",
+                "$rootDir/src_plugins",
+                "$rootDir/compose/facade/core",
+                "$rootDir/compose/facade/enabled",
+                "$rootDir/compose/features",
+            ]
+            kotlin.directories.addAll(java.srcDirs.collect { it.path })
+            proto {
+                srcDirs = ["$rootDir/protos/", "$rootDir/quickstep/protos_overrides/"]
+            }
+        }
+
+        lawn {
+            manifest.srcFile "$rootDir/lawnchair/AndroidManifest.xml"
+            res.srcDirs = [
+                "$rootDir/lawnchair/res",
+                "$rootDir/platform_frameworks_libs_systemui/animationlib/res",
+            ]
+            java.srcDirs = [
+                "$rootDir/src_flags",
+                "$rootDir/src_shortcuts_overrides",
+                "$rootDir/lawnchair/src",
+                "$rootDir/tests/shared",
+            ]
+            kotlin.directories.addAll(java.srcDirs.collect { it.path })
+            aidl.srcDirs = ["$rootDir/lawnchair/aidl"]
+            assets.srcDirs = ["$rootDir/lawnchair/assets"]
+            proto {
+                srcDirs = ["$rootDir/lawnchair/protos/"]
+            }
+        }
+
+        withQuickstep {
+            manifest.srcFile "$rootDir/quickstep/AndroidManifest.xml"
+            res.srcDirs = ["$rootDir/quickstep/res", "$rootDir/quickstep/recents_ui_overrides/res"]
+            java.srcDirs = [
+                "$rootDir/quickstep/src",
+                "$rootDir/quickstep/dagger",
+                "$rootDir/quickstep/recents_ui_overrides/src",
+                "$rootDir/quickstep/src_protolog",
+            ]
+            kotlin.directories.addAll(java.srcDirs.collect { it.path })
+        }
+
+        // Declares app.lawnchair.LawnchairLauncher as the HOME activity, so a host that just
+        // depends on this library gets a working launcher without copying manifest entries.
+        lawnWithQuickstep {
+            manifest.srcFile "$rootDir/quickstep/AndroidManifest-launcher.xml"
+        }
+    }
+}
+
+addFrameworkJar('framework-16.jar')
+
+dependencies {
+    api projects.iconloaderlib
+    api projects.searchuilib
+    api projects.animationlib
+    api projects.msdllib
+    api projects.contextualeducationlib
+    api projects.viewcapturelib
+    api projects.displaylib
+    api projects.mechanics
+
+    compileOnly projects.hiddenApi
+    implementation projects.shared
+    implementation projects.animation
+    implementation projects.unfold
+    implementation projects.log
+    compileOnly projects.plugin
+    implementation projects.plugincore
+    compileOnly projects.common
+    compileOnly projects.utils
+
+    implementation projects.compatLib
+    implementation projects.compatLib.compatLibVQ
+    implementation projects.compatLib.compatLibVR
+    implementation projects.compatLib.compatLibVS
+    implementation projects.compatLib.compatLibVT
+    implementation projects.compatLib.compatLibVU
+    implementation projects.compatLib.compatLibVV
+    implementation projects.compatLib.compatLibVBaklava
+    implementation projects.wmshell
+    implementation projects.flags
+    implementation projects.dagger
+    implementation projects.concurrent
+    implementation projects.modules.widgetpicker
+
+    implementation fileTree(dir: FRAMEWORK_PREBUILTS_DIR, include: 'SystemUI-statsd-16.jar')
+    implementation fileTree(dir: FRAMEWORK_PREBUILTS_DIR, include: 'WindowManager-Shell-16.jar')
+    compileOnly fileTree(dir: FRAMEWORK_PREBUILTS_DIR, include: 'framework-16.jar')
+
+    coreLibraryDesugaring libs.android.desugarJdkLibs
+
+    implementation libs.androidx.dynamicanimation
+    implementation libs.androidx.profileinstaller
+    implementation libs.androidx.recyclerview
+    implementation libs.androidx.preference.ktx
+
+    implementation libs.javax.inject
+    implementation libs.kotlinx.coroutines.android
+    implementation libs.kotlinx.serialization.json
+    implementation libs.chickenhook.restrictionbypass
+    implementation libs.rikka.refine.runtime
+
+    implementation libs.androidx.constraintlayout
+    implementation libs.androidx.datastore.preferences
+
+    implementation platform(libs.compose.bom)
+    implementation libs.compose.ui
+    implementation libs.compose.ui.util
+    implementation libs.compose.ui.graphics
+    implementation libs.bundles.graphics
+    debugImplementation libs.compose.ui.tooling
+    implementation libs.compose.ui.tooling.preview
+    implementation libs.compose.ui.google.fonts
+    implementation libs.compose.foundation
+    implementation libs.compose.material.icons
+    implementation libs.compose.runtime.livedata
+    implementation libs.compose.material3
+    implementation libs.compose.material3.windowSizeClass
+    implementation libs.androidx.activity.compose
+    implementation libs.androidx.lifecycle.viewmodel.compose
+    implementation libs.androidx.navigation.compose
+    implementation libs.androidx.palette.ktx
+    implementation libs.androidx.slice.core
+    implementation libs.bundles.accompanist
+    implementation libs.google.material
+    implementation libs.material.motion.compose
+    implementation libs.kdrag0n.colorkt
+    implementation libs.coil.compose
+    implementation libs.xdrop.fuzzywuzzy
+
+    implementation libs.bundles.opto
+    implementation libs.bundles.retrofit
+
+    implementation libs.bundles.room
+    ksp libs.room.compiler
+
+    implementation libs.libsu.service
+    implementation libs.airbnb.lottie
+    implementation libs.reorderable
+
+    implementation(libs.smartspacer.sdk) {
+        exclude group: "com.github.skydoves", module: "balloon"
+    }
+
+    implementation libs.hoko.blur
+    implementation libs.androidx.window
+
+    ksp libs.dagger.compiler
+    implementation libs.dagger.hilt.android
+    ksp libs.dagger.hilt.compiler
+
+    implementation libs.google.guava
+    implementation libs.androidx.exifinterface
+
+    debugImplementation libs.leakcanary.android
+    debugImplementation libs.leakcanary.androidstudio
+}
+
+ksp {
+    arg("room.schemaLocation", "$rootDir/schemas")
+    arg("dagger.hilt.disableModulesHaveInstallInCheck", "true")
+}
+
+composeCompiler {
+    stabilityConfigurationFiles.addAll(
+        rootProject.layout.projectDirectory.file("compose_compiler_config.conf"),
+    )
+    reportsDestination = layout.buildDirectory.dir("compose_build_reports")
+}
