@@ -42,7 +42,7 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 
 import com.android.launcher3.BaseActivity;
-import com.android.launcher3.BuildConfig;
+import com.android.launcher3.HostPackage;
 import com.android.launcher3.Launcher;
 import com.android.launcher3.Utilities;
 import com.android.launcher3.dagger.ApplicationContext;
@@ -177,7 +177,7 @@ public class ApiWrapper {
                         .appendQueryParameter("id", packageName)
                         .build())
                 .putExtra(Intent.EXTRA_REFERRER, new Uri.Builder().scheme("android-app")
-                        .authority(BuildConfig.APPLICATION_ID).build());
+                        .authority(HostPackage.get()).build());
     }
 
     /**

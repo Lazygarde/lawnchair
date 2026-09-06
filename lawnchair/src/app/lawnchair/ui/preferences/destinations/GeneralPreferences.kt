@@ -51,7 +51,7 @@ import app.lawnchair.ui.preferences.components.notificationServiceEnabled
 import app.lawnchair.ui.preferences.data.liveinfo.liveInformationManager
 import app.lawnchair.ui.preferences.navigation.GeneralIconPack
 import app.lawnchair.ui.preferences.navigation.GeneralIconShape
-import com.android.launcher3.BuildConfig
+import com.android.launcher3.HostPackage
 import com.android.launcher3.R
 import com.android.launcher3.Utilities
 
@@ -100,7 +100,7 @@ fun GeneralPreferences(modifier: Modifier = Modifier) {
             )
         }
         PreferenceGroup(heading = stringResource(id = R.string.updater)) {
-            if (BuildConfig.APPLICATION_ID.contains("nightly")) {
+            if (HostPackage.get().contains("nightly")) {
                 SwitchPreference(
                     adapter = prefs2.autoUpdaterNightly.getAdapter(),
                     label = stringResource(id = R.string.auto_updater_label),

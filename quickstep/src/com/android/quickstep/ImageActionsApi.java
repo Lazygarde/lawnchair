@@ -36,7 +36,7 @@ import android.view.View;
 import androidx.annotation.Nullable;
 import androidx.annotation.UiThread;
 
-import com.android.launcher3.BuildConfig;
+import com.android.launcher3.HostPackage;
 import com.android.quickstep.util.ImageActionUtils;
 import com.android.systemui.shared.recents.model.Task;
 
@@ -47,7 +47,7 @@ import java.util.function.Supplier;
  */
 public class ImageActionsApi {
 
-    private static final String TAG = BuildConfig.APPLICATION_ID + "ImageActionsApi";
+    private static final String TAG = HostPackage.get() + "ImageActionsApi";
 
     protected final Context mContext;
     protected final Supplier<Bitmap> mBitmapSupplier;

@@ -23,7 +23,7 @@ import android.os.UserManager;
 import android.util.Log;
 import android.view.ThreadedRenderer;
 
-import com.android.launcher3.BuildConfig;
+import com.android.launcher3.HostPackage;
 import com.android.launcher3.MainProcessInitializer;
 import com.android.quickstep.util.QuickstepProtoLogGroup;
 import com.android.launcher3.Utilities;
@@ -51,7 +51,7 @@ public class QuickstepProcessInitializer extends MainProcessInitializer {
             PackageManager pm = context.getPackageManager();
             pm.setApplicationEnabledSetting(context.getPackageName(),
                     PackageManager.COMPONENT_ENABLED_STATE_DISABLED, 0 /* flags */);
-            Log.w(TAG, "Disabling " + BuildConfig.APPLICATION_ID
+            Log.w(TAG, "Disabling " + HostPackage.get()
                     + ", unable to run in a managed profile");
             return;
         }
