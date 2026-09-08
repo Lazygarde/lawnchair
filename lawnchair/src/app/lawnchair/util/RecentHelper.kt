@@ -8,7 +8,7 @@ import android.os.Process
 import android.os.UserHandle
 import app.lawnchair.LawnchairLauncher
 import app.lawnchair.launcher
-import com.android.launcher3.BuildConfig
+import com.android.launcher3.LauncherHost
 import com.android.quickstep.views.RecentsView
 import com.android.systemui.shared.recents.model.Task
 import com.android.systemui.shared.system.ActivityManagerWrapper
@@ -40,7 +40,7 @@ object RecentHelper {
                                 )
                             }
                             if (!isAppLocked(packageName, context) &&
-                                !packageName.contains(BuildConfig.APPLICATION_ID) &&
+                                !packageName.contains(LauncherHost.get()) &&
                                 !taskLockState!!
                             ) {
                                 ActivityManagerWrapper.getInstance().removeTask(taskId)

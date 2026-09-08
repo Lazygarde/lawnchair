@@ -47,6 +47,7 @@ import app.lawnchair.util.restartLauncher
 import app.lawnchair.util.unsafeLazy
 import app.lawnchair.views.ComposeBottomSheet
 import com.android.launcher3.BuildConfig
+import com.android.launcher3.LauncherHost
 import com.android.launcher3.InvariantDeviceProfile
 import com.android.launcher3.Launcher
 import com.android.launcher3.LauncherApplication
@@ -56,7 +57,8 @@ import com.android.quickstep.RecentsActivity
 import com.android.systemui.shared.system.QuickStepContract
 import java.io.File
 
-class LawnchairApp : LauncherApplication() {
+// `open` so a host that publishes its own app can subclass it instead of replacing it.
+open class LawnchairApp : LauncherApplication() {
     private val compatible = Build.VERSION.SDK_INT in BuildConfig.QUICKSTEP_MIN_SDK..BuildConfig.QUICKSTEP_MAX_SDK
     private val isRecentsComponent: Boolean by unsafeLazy { checkRecentsComponent() }
     private val recentsEnabled: Boolean get() = compatible && isRecentsComponent
@@ -278,7 +280,7 @@ class LawnchairApp : LauncherApplication() {
         }
 
         fun getUriForFile(context: Context, file: File): Uri {
-            return FileProvider.getUriForFile(context, "${BuildConfig.APPLICATION_ID}.fileprovider", file)
+            return FileProvider.getUriForFile(context, "${LauncherHost.get()}.fileprovider", file)
         }
     }
 }

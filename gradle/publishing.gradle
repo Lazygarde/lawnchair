@@ -47,7 +47,13 @@ def artifactIds = [
         ':dagger'                   : 'dagger',
         ':concurrent'               : 'concurrent',
         ':modules:widgetpicker'     : 'widgetpicker',
+
+        ':launcher-ui'              : 'launcher-ui',
 ]
+
+// :launcher-ui mirrors the app's flavor layout so that lawnchair/res keeps overlaying res, so
+// its publishable variant is the flavour combination rather than a bare build type.
+def publishVariant = project.path == ':launcher-ui' ? 'lawnWithQuickstepRelease' : 'release'
 
 def artifactId = artifactIds[project.path]
 if (artifactId == null) {
@@ -72,7 +78,7 @@ def gprToken = providers.gradleProperty('gpr.key')
 
 android {
     publishing {
-        singleVariant('release') {
+        singleVariant(publishVariant) {
             withSourcesJar()
         }
     }
@@ -83,14 +89,14 @@ afterEvaluate {
     // as their Java sources, so the generated AIDL stubs land on top of the checked-in
     // files when the sources jar is assembled. Keeping the first copy (the checked-in
     // one) is the right result for a sources artifact.
-    tasks.named('sourceReleaseJar', Jar) {
+    tasks.named("source${publishVariant.capitalize()}Jar", Jar) {
         duplicatesStrategy = DuplicatesStrategy.EXCLUDE
     }
 
     publishing {
         publications {
             release(MavenPublication) {
-                from components.release
+                from components[publishVariant]
 
                 groupId = publishGroup
                 setArtifactId(artifactId)

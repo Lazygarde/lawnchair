@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Values the hosting app is expected to override, either with a resValue in its build script or
+  with a resource of the same name. They exist here so the library compiles on its own.
+-->
+<resources>
+    <!--
+      "<applicationId>/app.lawnchair.LawnchairLauncher". Used to keep the launcher itself out of
+      the app drawer, so an empty default only means the launcher lists itself.
+    -->
+    <string name="launcher_component" translatable="false"></string>
+
+    <!-- Distribution channel; "play" turns off the in-app updater. -->
+    <string name="config_release_channel" translatable="false">play</string>
+</resources>

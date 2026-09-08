@@ -16,6 +16,7 @@
 package com.android.launcher3;
 
 import android.app.Application;
+import android.content.Context;
 
 import com.android.launcher3.dagger.DaggerLauncherAppComponent;
 import com.android.launcher3.dagger.LauncherAppComponent;
@@ -28,6 +29,15 @@ import com.android.launcher3.util.TraceHelper;
 public class LauncherApplication extends Application {
 
     private volatile LauncherBaseAppComponent mAppComponent;
+
+    @Override
+    protected void attachBaseContext(Context base) {
+        super.attachBaseContext(base);
+        // Runs before any content provider of this app, which is the earliest point at which
+        // the launcher code can learn the hosting app's package name.
+        LauncherHost.init(base);
+    }
+
     @Override
     public void onCreate() {
         super.onCreate();

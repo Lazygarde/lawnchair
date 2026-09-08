@@ -56,17 +56,14 @@
     <permission android:name="${applicationId}.permission.START_WIDGET_PICKER_ACTIVITY"
         android:protectionLevel="signature|privileged" />
 
-    <application android:backupAgent="com.android.launcher3.LauncherBackupAgent"
-         android:enableOnBackInvokedCallback="true"
-         android:fullBackupOnly="true"
-         android:fullBackupContent="@xml/backupscheme"
-         android:hardwareAccelerated="true"
-         android:icon="@drawable/ic_launcher_home"
-         android:label="@string/derived_app_name"
-         android:theme="@style/AppTheme"
-         android:largeHeap="@bool/config_largeHeap"
-         android:restoreAnyVersion="true"
-         android:supportsRtl="true">
+    <!--
+      The <application> identity attributes (name, icon, label, theme, backupAgent,
+      fullBackupContent, ...) used to sit here. They moved to the app's AndroidManifest.xml when
+      this source set became part of the :launcher-ui library: a library that declared them would
+      force them on every host and make the merger fail unless the host wrote tools:replace for
+      each one.
+    -->
+    <application>
 
         <service android:name="com.android.quickstep.TouchInteractionService"
              android:permission="android.permission.STATUS_BAR_SERVICE"
