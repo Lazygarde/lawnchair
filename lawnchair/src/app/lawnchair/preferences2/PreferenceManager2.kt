@@ -54,10 +54,10 @@ import app.lawnchair.ui.preferences.components.HiddenAppsInSearch
 import app.lawnchair.ui.preferences.data.liveinfo.LiveInformationManager
 import app.lawnchair.util.kotlinxJson
 import app.lawnchair.views.overlay.FullScreenOverlayMode
-import com.android.launcher3.LauncherHost
 import com.android.launcher3.InvariantDeviceProfile
 import com.android.launcher3.InvariantDeviceProfile.INDEX_DEFAULT
 import com.android.launcher3.LauncherAppState
+import com.android.launcher3.LauncherHost
 import com.android.launcher3.LauncherPrefs
 import com.android.launcher3.LauncherPrefs.Companion.ENABLE_TWOLINE_ALLAPPS_TOGGLE
 import com.android.launcher3.R

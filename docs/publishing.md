@@ -173,6 +173,20 @@ resValue("string", "config_release_channel", "play")
 
 If you do redeclare it, keep `android:theme="@style/AppTheme"`. `tools:node="replace"` swaps the whole element rather than merging into it, and Launcher3's views read attributes that only `AppTheme` defines: under the host's own theme the launcher dies inflating `DeleteDropTarget` with `UnsupportedOperationException: Failed to resolve attribute`.
 
+**5. Overriding app launches (optional).** If the host needs to intercept clicks on app icons or shortcuts (e.g. to enforce an app lock, show custom UI, or record analytics), set an `AppLaunchInterceptor` on `LauncherHost`:
+
+```kotlin
+LauncherHost.appLaunchInterceptor = AppLaunchInterceptor { context, intent, item, view ->
+    val packageName = item?.targetComponent?.packageName ?: intent.component?.packageName
+    if (shouldIntercept(packageName)) {
+        // Custom action handled by the host
+        true // Return true to suppress the launcher's default launch
+    } else {
+        false // Return false to proceed normally
+    }
+}
+```
+
 ### Caveats
 
 - **Hidden APIs.** Several modules compile against the AOSP stubs in `prebuilts/libs`

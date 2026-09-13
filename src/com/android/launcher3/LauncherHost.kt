@@ -17,6 +17,32 @@
 package com.android.launcher3
 
 import android.content.Context
+import android.content.Intent
+import android.view.View
+import com.android.launcher3.model.data.ItemInfo
+
+/**
+ * Interceptor called before the launcher starts an activity (e.g. when clicking an app icon or shortcut).
+ * Allows the hosting app to intercept, cancel, or redirect the action.
+ */
+fun interface AppLaunchInterceptor {
+    /**
+     * Called when an activity is about to be started from the launcher.
+     *
+     * @param context The launcher context.
+     * @param intent The intent to be launched.
+     * @param item The [ItemInfo] associated with the clicked item, if available.
+     * @param view The clicked view, if available.
+     * @return `true` if the launch event was consumed/overridden by the host (canceling the launcher's
+     * default launch), or `false` to let the launcher proceed normally.
+     */
+    fun onAppLaunch(
+        context: Context,
+        intent: Intent,
+        item: ItemInfo?,
+        view: View?,
+    ): Boolean
+}
 
 /**
  * Facts about the app that hosts the launcher.
@@ -32,6 +58,11 @@ object LauncherHost {
 
     @Volatile
     private var context: Context? = null
+
+    /** Optional hook for the host app to intercept activity launches (app clicks, shortcuts, etc.). */
+    @Volatile
+    @JvmStatic
+    var appLaunchInterceptor: AppLaunchInterceptor? = null
 
     @JvmStatic
     fun init(context: Context) {

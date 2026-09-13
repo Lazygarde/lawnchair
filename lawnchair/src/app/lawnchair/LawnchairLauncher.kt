@@ -56,6 +56,7 @@ import com.android.launcher3.BaseActivity
 import com.android.launcher3.BubbleTextView
 import com.android.launcher3.GestureNavContract
 import com.android.launcher3.LauncherAppState
+import com.android.launcher3.LauncherHost
 import com.android.launcher3.LauncherSettings.Favorites.CONTAINER_ALL_APPS_PREDICTION
 import com.android.launcher3.LauncherSettings.Favorites.CONTAINER_HOTSEAT_PREDICTION
 import com.android.launcher3.LauncherSettings.Favorites.CONTAINER_WIDGETS_PREDICTION
@@ -95,7 +96,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
-class LawnchairLauncher : QuickstepLauncher() {
+open class LawnchairLauncher : QuickstepLauncher() {
     private val defaultOverlay by unsafeLazy { OverlayCallbackImpl(this) }
     private val prefs by unsafeLazy { PreferenceManager.getInstance(this) }
     private val preferenceManager2 by unsafeLazy { PreferenceManager2.getInstance(this) }
@@ -465,6 +466,16 @@ class LawnchairLauncher : QuickstepLauncher() {
         options.launchDisplayId = if (v.display != null) v.display.displayId else Display.DEFAULT_DISPLAY
         val callback = RunnableList()
         return ActivityOptionsWrapper(options, callback)
+    }
+
+    override fun startActivitySafely(v: View?, intent: Intent?, item: ItemInfo?): RunnableList? {
+        if (intent != null) {
+            val interceptor = LauncherHost.appLaunchInterceptor
+            if (interceptor != null && interceptor.onAppLaunch(this, intent, item, v)) {
+                return null
+            }
+        }
+        return super.startActivitySafely(v, intent, item)
     }
 
     override fun onResume() {

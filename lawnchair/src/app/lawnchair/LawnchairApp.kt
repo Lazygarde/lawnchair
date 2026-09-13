@@ -47,10 +47,10 @@ import app.lawnchair.util.restartLauncher
 import app.lawnchair.util.unsafeLazy
 import app.lawnchair.views.ComposeBottomSheet
 import com.android.launcher3.BuildConfig
-import com.android.launcher3.LauncherHost
 import com.android.launcher3.InvariantDeviceProfile
 import com.android.launcher3.Launcher
 import com.android.launcher3.LauncherApplication
+import com.android.launcher3.LauncherHost
 import com.android.launcher3.R
 import com.android.launcher3.Utilities
 import com.android.quickstep.RecentsActivity
