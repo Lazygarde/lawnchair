@@ -12,6 +12,20 @@
 
     <uses-sdk tools:overrideLibrary="com.kieronquinn.app.smartspacer.sdk,com.kieronquinn.app.smartspacer.sdk.client" />
 
+    <!-- Application-level permissions for the standalone Lawnchair app -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VIDEO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+    <uses-permission android:name="android.permission.READ_MEDIA_VISUAL_USER_SELECTED" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
     <application
         android:name="app.lawnchair.LawnchairApp"
         android:backupAgent="com.android.launcher3.LauncherBackupAgent"
@@ -26,6 +40,48 @@
         android:restoreAnyVersion="true"
         android:supportsRtl="true"
         android:theme="@style/AppTheme"
-        tools:replace="android:label" />
+        tools:replace="android:label">
+
+        <service
+            android:name="app.lawnchair.LawnchairAccessibilityService"
+            android:exported="false"
+            android:label="@string/derived_app_name"
+            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE">
+            <intent-filter>
+                <action android:name="android.accessibilityservice.AccessibilityService" />
+            </intent-filter>
+            <meta-data
+                android:name="android.accessibilityservice"
+                android:resource="@xml/accessibility_service_config" />
+        </service>
+
+        <provider
+            android:name="app.lawnchair.bugreport.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/provider_paths" />
+        </provider>
+
+        <receiver
+            android:name="app.lawnchair.bugreport.BugReportReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="${applicationId}.bugreport.COPY" />
+                <action android:name="${applicationId}.bugreport.UPLOAD" />
+                <action android:name="${applicationId}.bugreport.UPLOAD_COMPLETE" />
+            </intent-filter>
+        </receiver>
+
+        <service
+            android:name="app.lawnchair.bugreport.UploaderService"
+            android:enabled="true"
+            android:exported="false"
+            android:process=":bugReport"
+            android:foregroundServiceType="dataSync" />
+
+    </application>
 
 </manifest>

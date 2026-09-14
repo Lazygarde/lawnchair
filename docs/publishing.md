@@ -187,6 +187,24 @@ LauncherHost.appLaunchInterceptor = AppLaunchInterceptor { context, intent, item
 }
 ```
 
+**6. Permissions and Google Play compliance.** Following the **Principle of Least Privilege**, `launcher-ui` declares only safe, standard permissions required for basic home screen functionality:
+
+- `SET_WALLPAPER` / `SET_WALLPAPER_HINTS` (changing wallpaper)
+- `BIND_APPWIDGET` (pinning home screen widgets)
+- `RECEIVE_BOOT_COMPLETED` (reinitializing state after reboot)
+- `REQUEST_DELETE_PACKAGES` (uninstalling apps from popup menu)
+- `EXPAND_STATUS_BAR` (swipe gestures to open notifications)
+- `VIBRATE` (haptic feedback)
+- `INTERNET`, `FLASHLIGHT`
+
+High-risk, restricted, signature/system, accessibility, and foreground service permissions are **never declared by the library**:
+
+- **`QUERY_ALL_PACKAGES`**: If the host serves as a primary launcher and needs to list all installed applications on Android 11+ (API 30+), the host must declare it in its own `app/src/main/AndroidManifest.xml`:
+  ```xml
+  <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+  ```
+- **Optional feature permissions**: If the host wants features such as direct dial shortcuts (`CALL_PHONE`), in-launcher contact search (`READ_CONTACTS`), or accessibility gesture actions (`LawnchairAccessibilityService`), the host declares them explicitly. If omitted, the launcher handles the absence safely at runtime without crashing.
+
 ### Caveats
 
 - **Hidden APIs.** Several modules compile against the AOSP stubs in `prebuilts/libs`
