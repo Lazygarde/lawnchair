@@ -17190,9 +17190,3 @@ SPLkotlinx/serialization/modules/SerializersModuleBuildersKt;->EmptySerializersM
 Lkotlinx/serialization/modules/SerializersModuleKt;
 SPLkotlinx/serialization/modules/SerializersModuleKt;-><clinit>()V
 SPLkotlinx/serialization/modules/SerializersModuleKt;->getEmptySerializersModule()Lkotlinx/serialization/modules/SerializersModule;
-Lorg/chickenhook/restrictionbypass/NativeReflectionBypass;
-SPLorg/chickenhook/restrictionbypass/NativeReflectionBypass;-><clinit>()V
-Lorg/chickenhook/restrictionbypass/RestrictionBypass;
-SPLorg/chickenhook/restrictionbypass/RestrictionBypass;->getDeclaredMethod(Ljava/lang/Object;Ljava/lang/String;[Ljava/lang/Class;)Ljava/lang/reflect/Method;
-Lorg/chickenhook/restrictionbypass/Unseal;
-SPLorg/chickenhook/restrictionbypass/Unseal;->unseal()V
