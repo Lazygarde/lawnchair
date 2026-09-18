@@ -228,43 +228,49 @@ class StatsLogCompatManager private constructor(context: Context) : StatsLogMana
 
         override fun sendToInteractionJankMonitor(event: EventEnum?, view: View?) {
             if (event !is LauncherEvent) return
-            when (event) {
-                LAUNCHER_ALLAPPS_VERTICAL_SWIPE_BEGIN ->
-                    InteractionJankMonitorWrapper.begin(view, Cuj.CUJ_LAUNCHER_ALL_APPS_SCROLL)
+            try {
+                when (event) {
+                    LAUNCHER_ALLAPPS_VERTICAL_SWIPE_BEGIN ->
+                        InteractionJankMonitorWrapper.begin(view, Cuj.CUJ_LAUNCHER_ALL_APPS_SCROLL)
 
-                LAUNCHER_ALLAPPS_VERTICAL_SWIPE_END ->
-                    InteractionJankMonitorWrapper.end(Cuj.CUJ_LAUNCHER_ALL_APPS_SCROLL)
-                LAUNCHER_PRIVATE_SPACE_LOCK_ANIMATION_BEGIN ->
-                    InteractionJankMonitorWrapper.begin(view, Cuj.CUJ_LAUNCHER_PRIVATE_SPACE_LOCK)
+                    LAUNCHER_ALLAPPS_VERTICAL_SWIPE_END ->
+                        InteractionJankMonitorWrapper.end(Cuj.CUJ_LAUNCHER_ALL_APPS_SCROLL)
+                    LAUNCHER_PRIVATE_SPACE_LOCK_ANIMATION_BEGIN ->
+                        InteractionJankMonitorWrapper.begin(view, Cuj.CUJ_LAUNCHER_PRIVATE_SPACE_LOCK)
 
-                LAUNCHER_PRIVATE_SPACE_LOCK_ANIMATION_END ->
-                    InteractionJankMonitorWrapper.end(Cuj.CUJ_LAUNCHER_PRIVATE_SPACE_LOCK)
-                LAUNCHER_PRIVATE_SPACE_UNLOCK_ANIMATION_BEGIN ->
-                    InteractionJankMonitorWrapper.begin(view, Cuj.CUJ_LAUNCHER_PRIVATE_SPACE_UNLOCK)
+                    LAUNCHER_PRIVATE_SPACE_LOCK_ANIMATION_END ->
+                        InteractionJankMonitorWrapper.end(Cuj.CUJ_LAUNCHER_PRIVATE_SPACE_LOCK)
+                    LAUNCHER_PRIVATE_SPACE_UNLOCK_ANIMATION_BEGIN ->
+                        InteractionJankMonitorWrapper.begin(view, Cuj.CUJ_LAUNCHER_PRIVATE_SPACE_UNLOCK)
 
-                LAUNCHER_PRIVATE_SPACE_UNLOCK_ANIMATION_END ->
-                    InteractionJankMonitorWrapper.end(Cuj.CUJ_LAUNCHER_PRIVATE_SPACE_UNLOCK)
-                LAUNCHER_WORK_UTILITY_VIEW_EXPAND_ANIMATION_BEGIN ->
-                    InteractionJankMonitorWrapper.begin(
-                        view,
-                        Cuj.CUJ_LAUNCHER_WORK_UTILITY_VIEW_EXPAND,
-                    )
+                    LAUNCHER_PRIVATE_SPACE_UNLOCK_ANIMATION_END ->
+                        InteractionJankMonitorWrapper.end(Cuj.CUJ_LAUNCHER_PRIVATE_SPACE_UNLOCK)
+                    LAUNCHER_WORK_UTILITY_VIEW_EXPAND_ANIMATION_BEGIN ->
+                        InteractionJankMonitorWrapper.begin(
+                            view,
+                            Cuj.CUJ_LAUNCHER_WORK_UTILITY_VIEW_EXPAND,
+                        )
 
-                LAUNCHER_WORK_UTILITY_VIEW_EXPAND_ANIMATION_END ->
-                    InteractionJankMonitorWrapper.end(Cuj.CUJ_LAUNCHER_WORK_UTILITY_VIEW_EXPAND)
+                    LAUNCHER_WORK_UTILITY_VIEW_EXPAND_ANIMATION_END ->
+                        InteractionJankMonitorWrapper.end(Cuj.CUJ_LAUNCHER_WORK_UTILITY_VIEW_EXPAND)
 
-                LAUNCHER_WORK_UTILITY_VIEW_SHRINK_ANIMATION_BEGIN ->
-                    InteractionJankMonitorWrapper.begin(
-                        view,
-                        Cuj.CUJ_LAUNCHER_WORK_UTILITY_VIEW_SHRINK,
-                    )
+                    LAUNCHER_WORK_UTILITY_VIEW_SHRINK_ANIMATION_BEGIN ->
+                        InteractionJankMonitorWrapper.begin(
+                            view,
+                            Cuj.CUJ_LAUNCHER_WORK_UTILITY_VIEW_SHRINK,
+                        )
 
-                LAUNCHER_WORK_UTILITY_VIEW_SHRINK_ANIMATION_END ->
-                    InteractionJankMonitorWrapper.end(Cuj.CUJ_LAUNCHER_WORK_UTILITY_VIEW_SHRINK)
+                    LAUNCHER_WORK_UTILITY_VIEW_SHRINK_ANIMATION_END ->
+                        InteractionJankMonitorWrapper.end(Cuj.CUJ_LAUNCHER_WORK_UTILITY_VIEW_SHRINK)
 
-                else -> {}
+                    else -> {}
+                }
+            } catch (_: Throwable) {
+                // InteractionJankMonitorWrapper touches com.android.internal.jank (non-SDK).
+                // Swallow any LinkageError / NoSuchMethodError on Android 16+ ART enforcement.
             }
         }
+
 
         fun applyOverwrites(atomInfo: LauncherAtom.ItemInfo): LauncherAtom.ItemInfo =
             atomInfo
