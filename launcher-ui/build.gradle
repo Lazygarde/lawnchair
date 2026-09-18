@@ -71,6 +71,7 @@ android {
     productFlavors {
         lawn { dimension "app" }
         withQuickstep { dimension "recents" }
+        withoutQuickstep { dimension "recents" }
     }
 
     sourceSets {
@@ -122,9 +123,24 @@ android {
             kotlin.directories.addAll(java.srcDirs.collect { it.path })
         }
 
+        withoutQuickstep {
+            manifest.srcFile "$rootDir/quickstep/AndroidManifest-noqs.xml"
+            res.srcDirs = ["$rootDir/quickstep/res"]
+            java.srcDirs = [
+                "$rootDir/src_ui_overrides",
+                "$rootDir/dagger_ui_overrides",
+            ]
+            kotlin.directories.addAll(java.srcDirs.collect { it.path })
+        }
+
         // Declares app.lawnchair.LawnchairLauncher as the HOME activity, so a host that just
         // depends on this library gets a working launcher without copying manifest entries.
         lawnWithQuickstep {
+            manifest.srcFile "$rootDir/quickstep/AndroidManifest-launcher.xml"
+        }
+
+        // withoutQuickstep launcher manifest entry — same HOME activity, no system server reg.
+        lawnWithoutQuickstep {
             manifest.srcFile "$rootDir/quickstep/AndroidManifest-launcher.xml"
         }
     }
