@@ -54,8 +54,6 @@ abstract class ApiWrapperModule {
         impl: StatsLogCompatManagerFactory
     ): StatsLogManagerFactory
 
-    /** withoutQuickstep: bind core ApiWrapper directly — no SystemApiWrapper (touches hidden API). */
-    @Binds abstract fun bindApiWrapper(apiWrapper: ApiWrapper): ApiWrapper
 
     @Binds
     abstract fun bindIconProvider(iconProviderImpl: LauncherIconProviderImpl): LauncherIconProvider

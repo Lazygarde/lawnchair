@@ -16,10 +16,35 @@
 
 package app.lawnchair
 
+import android.content.Intent
+import app.lawnchair.preferences.PreferenceManager
+import app.lawnchair.views.LawnchairFloatingSurfaceView
+import com.android.launcher3.AbstractFloatingView
+import com.android.launcher3.GestureNavContract
 import com.android.launcher3.uioverrides.QuickstepLauncher
 
 /**
  * withQuickstep variant: LawnchairLauncher extends QuickstepLauncher to get
  * gesture navigation / recents integration.
  */
-open class LawnchairLauncherBase : QuickstepLauncher()
+open class LawnchairLauncherBase : QuickstepLauncher() {
+
+    open fun clearStuckBlurOnResumeIfHome() {
+        depthController?.clearStuckBlurOnResumeIfHome()
+    }
+
+    override fun handleGestureContract(intent: Intent) {
+        val prefs = PreferenceManager.getInstance(this)
+        if (!LawnchairApp.isRecentsEnabled && prefs.enableGnc.get()) {
+            val gnc = GestureNavContract.fromIntent(intent)
+            if (gnc != null) {
+                AbstractFloatingView.closeOpenViews(
+                    this,
+                    false,
+                    AbstractFloatingView.TYPE_ICON_SURFACE,
+                )
+                LawnchairFloatingSurfaceView.show(this as LawnchairLauncher, gnc)
+            }
+        }
+    }
+}

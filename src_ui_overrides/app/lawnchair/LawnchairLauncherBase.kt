@@ -23,4 +23,8 @@ import com.android.launcher3.Launcher
  * No quickstep/recents UI — no hidden API dependency.
  * All 14 methods overridden by LawnchairLauncher exist on core Launcher / BaseActivity.
  */
-open class LawnchairLauncherBase : Launcher()
+open class LawnchairLauncherBase : Launcher() {
+    open fun clearStuckBlurOnResumeIfHome() {
+        // No-op in withoutQuickstep (no DepthController)
+    }
+}

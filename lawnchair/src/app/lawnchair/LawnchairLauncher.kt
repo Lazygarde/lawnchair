@@ -50,11 +50,8 @@ import app.lawnchair.ui.popup.LauncherOptionsPopup
 import app.lawnchair.ui.popup.LawnchairShortcut
 import app.lawnchair.util.getThemedIconPacksInstalled
 import app.lawnchair.util.unsafeLazy
-import app.lawnchair.views.LawnchairFloatingSurfaceView
-import com.android.launcher3.AbstractFloatingView
 import com.android.launcher3.BaseActivity
 import com.android.launcher3.BubbleTextView
-import com.android.launcher3.GestureNavContract
 import com.android.launcher3.LauncherAppState
 import com.android.launcher3.LauncherHost
 import com.android.launcher3.LauncherSettings.Favorites.CONTAINER_ALL_APPS_PREDICTION
@@ -328,20 +325,6 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
         bindInflatedItems(inflatedItems, if (forceAnimateIcons) AnimatorSet() else null)
     }
 
-    override fun handleGestureContract(intent: Intent) {
-        if (!LawnchairApp.isRecentsEnabled && prefs.enableGnc.get()) {
-            val gnc = GestureNavContract.fromIntent(intent)
-            if (gnc != null) {
-                AbstractFloatingView.closeOpenViews(
-                    this,
-                    false,
-                    AbstractFloatingView.TYPE_ICON_SURFACE,
-                )
-                LawnchairFloatingSurfaceView.show(this, gnc)
-            }
-        }
-    }
-
     override fun onUiChangedWhileSleeping() {
         if (Utilities.ATLEAST_S) {
             super.onUiChangedWhileSleeping()
@@ -494,7 +477,7 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
                     dragLayer.post {
                         dragLayer.viewTreeObserver.removeOnDrawListener(this)
                         // Drop stuck All Apps RenderEffect on icons after returning home.
-                        depthController.clearStuckBlurOnResumeIfHome()
+                        clearStuckBlurOnResumeIfHome()
                     }
                 }
             },

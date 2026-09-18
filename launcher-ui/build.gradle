@@ -142,6 +142,7 @@ android {
         // withoutQuickstep launcher manifest entry — same HOME activity, no system server reg.
         lawnWithoutQuickstep {
             manifest.srcFile "$rootDir/quickstep/AndroidManifest-launcher.xml"
+            res.srcDirs = ["$rootDir/src_ui_overrides/res"]
         }
     }
 }

@@ -51,9 +51,8 @@ def artifactIds = [
         ':launcher-ui'              : 'launcher-ui',
 ]
 
-// :launcher-ui mirrors the app's flavor layout so that lawnchair/res keeps overlaying res, so
-// its publishable variant is the flavour combination rather than a bare build type.
-def publishVariant = project.path == ':launcher-ui' ? 'lawnWithQuickstepRelease' : 'release'
+// :launcher-ui publishes the withoutQuickstep variant (pure SDK API, no hidden-API / ART bypass crashes).
+def publishVariant = project.path == ':launcher-ui' ? 'lawnWithoutQuickstepRelease' : 'release'
 
 def artifactId = artifactIds[project.path]
 if (artifactId == null) {

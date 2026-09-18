@@ -15,7 +15,7 @@
 -->
 <resources>
     <string name="overscroll_plugin_factory_class" translatable="false" />
-    <string name="task_overlay_factory_class" translatable="false"/>
+    <string name="task_overlay_factory_class" translatable="false">app.lawnchair.overview.TaskOverlayFactoryImpl</string>
 
     <string-array name="back_gesture_blocking_activities" translatable="false">
         <item>com.android.launcher3/com.android.quickstep.interaction.GestureSandboxActivity</item>
