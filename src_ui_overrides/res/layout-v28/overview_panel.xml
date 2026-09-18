@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-     withoutQuickstep stub. quickstep/res/layout-v28/overview_panel.xml declares
-     com.android.quickstep.views.LauncherRecentsView, which this variant does not compile, and on
-     API >= 28 the resource resolver prefers the -v28 qualifier over layout/overview_panel.xml.
-     Without this file the launcher crashes inflating its root view.
+     Defensive stub. Nothing in this variant should provide a -v28 overview_panel any more (the
+     quickstep one lives in quickstep/res_views, which only withQuickstep compiles), so the base
+     res/layout/overview_panel.xml would apply. This keeps the -v28 qualifier pinned to a Space so
+     that re-adding a quickstep layout under quickstep/res cannot silently make this variant
+     inflate LauncherRecentsView, a class it does not compile.
 -->
 <Space
     xmlns:android="http://schemas.android.com/apk/res/android"

@@ -113,7 +113,10 @@ android {
 
         withQuickstep {
             manifest.srcFile "$rootDir/quickstep/AndroidManifest.xml"
-            res.srcDirs = ["$rootDir/quickstep/res", "$rootDir/quickstep/recents_ui_overrides/res"]
+            // res_views holds every quickstep layout that names a class compiled only into this
+            // flavor. Keeping them out of quickstep/res is what lets withoutQuickstep reuse
+            // quickstep/res without inflating views whose classes it does not have.
+            res.srcDirs = ["$rootDir/quickstep/res", "$rootDir/quickstep/res_views", "$rootDir/quickstep/recents_ui_overrides/res"]
             java.srcDirs = [
                 "$rootDir/quickstep/src",
                 "$rootDir/quickstep/dagger",

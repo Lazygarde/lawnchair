@@ -1,4 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+     withoutQuickstep overrides for quickstep/res/values/config.xml.
+
+     Those entries name classes that only exist in the withQuickstep flavor. ResourceBasedOverride
+     catches the ClassNotFoundException and falls back to the base class, so a stale value is not
+     fatal, but it makes every lookup take the slow failing path and hides real wiring mistakes.
+     Blanking them here selects the base implementation directly.
+
+     main_process_initializer_class is deliberately NOT listed: lawnchair/res/values/config.xml
+     points it at app.lawnchair.LawnchairProcessInitializer, which both flavors provide. Blanking
+     it here would win over that (the lawnWithoutQuickstep source set outranks lawn) and skip the
+     initializer, leaving ThemedIconDrawable.COLORS_LOADER at its self-recursive default.
+-->
 <resources>
     <string name="task_overlay_factory_class" translatable="false"/>
+    <string name="test_information_handler_class" translatable="false"/>
+    <string name="secondary_display_quickstep_delegate_class" translatable="false"/>
+    <string name="taskbar_edu_tooltip_controller_class" translatable="false"/>
 </resources>

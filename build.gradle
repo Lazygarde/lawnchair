@@ -239,6 +239,13 @@ android {
             minSdk = 26
         }
 
+        // Lets the withoutQuickstep library variant be built and tested as a standalone app,
+        // instead of only through a host app that depends on the published AAR.
+        withoutQuickstep {
+            dimension "recents"
+            minSdk = 26
+        }
+
         github {
             applicationId 'app.lawnchair'
             dimension "channel"
