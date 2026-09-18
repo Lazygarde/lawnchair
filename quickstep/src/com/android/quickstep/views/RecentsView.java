@@ -691,7 +691,7 @@ public abstract class RecentsView<
                                     dismissTask(taskId, /*animate=*/true, /*removeTask=*/false);
                                 }
                             }, RecentsFilterState.getFilter(mFilterState.getPackageNameToFilter(),
-                                    mContainer.getDisplayId()));
+                                    (mContainer.getDisplay() != null ? mContainer.getDisplay().getDisplayId() : 0)));
                         }
                     }));
         }
@@ -2911,7 +2911,7 @@ public abstract class RecentsView<
     public void reloadIfNeeded() {
         if (!mModel.isTaskListValid(mAppliedTaskListChangeId)) {
             mModel.getTasks(this::applyLoadPlan, RecentsFilterState
-                    .getFilter(mFilterState.getPackageNameToFilter(), mContainer.getDisplayId()));
+                    .getFilter(mFilterState.getPackageNameToFilter(), (mContainer.getDisplay() != null ? mContainer.getDisplay().getDisplayId() : 0)));
             Log.d(TAG, "reloadIfNeeded - getTasks: " + mAppliedTaskListChangeId);
             if (enableRefactorTaskThumbnail()) {
                 mRecentsViewModel.refreshAllTaskData();
@@ -4718,7 +4718,7 @@ public abstract class RecentsView<
 
     public void reapplyActiveRotation() {
         RotationTouchHelper rotationTouchHelper = RotationTouchHelper.REPOSITORY_INSTANCE.get(
-                getContext()).get(mContainer.getDisplayId());
+                getContext()).get((mContainer.getDisplay() != null ? mContainer.getDisplay().getDisplayId() : 0));
         if (rotationTouchHelper != null) {
             setLayoutRotation(rotationTouchHelper.getCurrentActiveRotation(),
                     rotationTouchHelper.getDisplayRotation());

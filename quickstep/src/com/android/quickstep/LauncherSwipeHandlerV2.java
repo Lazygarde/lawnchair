@@ -114,7 +114,7 @@ public class LauncherSwipeHandlerV2 extends AbsSwipeUpHandler<
                 && workspaceView.isAttachedToWindow()
                 && workspaceView.getHeight() > 0
                 && !DesktopVisibilityController.INSTANCE.get(mContainer)
-                        .isInDesktopModeAndNotInOverview(mContainer.getDisplayId());
+                        .isInDesktopModeAndNotInOverview((mContainer.getDisplay() != null ? mContainer.getDisplay().getDisplayId() : 0));
 
         mContainer.getRootView().setForceHideBackArrow(true);
 

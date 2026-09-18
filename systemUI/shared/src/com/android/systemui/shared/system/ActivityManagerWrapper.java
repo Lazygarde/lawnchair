@@ -65,8 +65,18 @@ public class ActivityManagerWrapper {
     // Should match the value in AssistManager
     private static final String INVOCATION_TIME_MS_KEY = "invocation_time_ms";
 
-    private final ActivityTaskManager mAtm = (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) ? ActivityTaskManager.getInstance() : null;
-    private ActivityManagerWrapper() { }
+    private final ActivityTaskManager mAtm;
+    private ActivityManagerWrapper() {
+        ActivityTaskManager atm = null;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            try {
+                atm = ActivityTaskManager.getInstance();
+            } catch (Throwable t) {
+                // LC-Ignored
+            }
+        }
+        mAtm = atm;
+    }
 
     public static ActivityManagerWrapper getInstance() {
         return sInstance;
@@ -80,8 +90,8 @@ public class ActivityManagerWrapper {
         try {
             ui = ActivityManager.getService().getCurrentUser();
             return ui != null ? ui.id : 0;
-        } catch (RemoteException e) {
-            throw e.rethrowFromSystemServer();
+        } catch (Throwable e) {
+            return 0;
         }
     }
 
@@ -97,13 +107,18 @@ public class ActivityManagerWrapper {
      * list (can be {@code null}).
      */
     public ActivityManager.RunningTaskInfo getRunningTask(boolean filterOnlyVisibleRecents) {
-        // Note: The set of running tasks from the system is ordered by recency
-        List<ActivityManager.RunningTaskInfo> tasks =
-                mAtm.getTasks(1, filterOnlyVisibleRecents);
-        if (tasks.isEmpty()) {
+        if (mAtm == null) return null;
+        try {
+            // Note: The set of running tasks from the system is ordered by recency
+            List<ActivityManager.RunningTaskInfo> tasks =
+                    mAtm.getTasks(1, filterOnlyVisibleRecents);
+            if (tasks.isEmpty()) {
+                return null;
+            }
+            return tasks.get(0);
+        } catch (Throwable t) {
             return null;
         }
-        return tasks.get(0);
     }
 
     /**
@@ -124,11 +139,16 @@ public class ActivityManagerWrapper {
      */
     public ActivityManager.RunningTaskInfo[] getRunningTasks(boolean filterOnlyVisibleRecents,
             int displayId) {
-        // Note: The set of running tasks from the system is ordered by recency
-        List<ActivityManager.RunningTaskInfo> tasks =
-                mAtm.getTasks(NUM_RECENT_ACTIVITIES_REQUEST,
-                        filterOnlyVisibleRecents, /* keepInExtras= */ false, displayId);
-        return tasks.toArray(new RunningTaskInfo[tasks.size()]);
+        if (mAtm == null) return new ActivityManager.RunningTaskInfo[0];
+        try {
+            // Note: The set of running tasks from the system is ordered by recency
+            List<ActivityManager.RunningTaskInfo> tasks =
+                    mAtm.getTasks(NUM_RECENT_ACTIVITIES_REQUEST,
+                            filterOnlyVisibleRecents, /* keepInExtras= */ false, displayId);
+            return tasks.toArray(new RunningTaskInfo[tasks.size()]);
+        } catch (Throwable t) {
+            return new ActivityManager.RunningTaskInfo[0];
+        }
     }
 
     /**
@@ -138,7 +158,7 @@ public class ActivityManagerWrapper {
         TaskSnapshot snapshot = null;
         try {
             snapshot = getService().getTaskSnapshot(taskId, isLowResolution);
-        } catch (RemoteException e) {
+        } catch (Throwable e) {
             Log.w(TAG, "Failed to retrieve task snapshot", e);
         }
         if (snapshot != null) {
@@ -158,7 +178,7 @@ public class ActivityManagerWrapper {
         TaskSnapshot snapshot = null;
         try {
             snapshot = getService().takeTaskSnapshot(taskId, /* updateCache= */ true);
-        } catch (RemoteException e) {
+        } catch (Throwable e) {
             Log.w(TAG, "Failed to take task snapshot", e);
         }
         if (snapshot != null) {
@@ -190,7 +210,7 @@ public class ActivityManagerWrapper {
     public void preloadRecentsActivity(Intent intent) {
         try {
             getService().preloadRecentsActivity(intent);
-        } catch (Exception e) {
+        } catch (Throwable e) {
             Log.w(TAG, "Failed to preload recents activity", e);
         }
     }
@@ -211,7 +231,7 @@ public class ActivityManagerWrapper {
             return ActivityManager.isStartResultSuccessful(
                     getService().startActivityFromRecents(
                             taskId, optsBundle));
-        } catch (Exception e) {
+        } catch (Throwable e) {
             return false;
         }
     }
@@ -222,7 +242,7 @@ public class ActivityManagerWrapper {
     public void closeSystemWindows(final String reason) {
         try {
             ActivityManager.getService().closeSystemDialogs(reason);
-        } catch (RemoteException e) {
+        } catch (Throwable e) {
             Log.w(TAG, "Failed to close system windows", e);
         }
     }
@@ -233,8 +253,8 @@ public class ActivityManagerWrapper {
     public boolean setTaskIsPerceptible(int taskId, boolean isPerceptible) {
         try {
             return getService().setTaskIsPerceptible(taskId, isPerceptible);
-        } catch (RemoteException e) {
-            throw e.rethrowFromSystemServer();
+        } catch (Throwable e) {
+            return false;
         }
     }
 
@@ -244,7 +264,7 @@ public class ActivityManagerWrapper {
     public void removeTask(final int taskId) {
         try {
             getService().removeTask(taskId);
-        } catch (RemoteException e) {
+        } catch (Throwable e) {
             Log.w(TAG, "Failed to remove task=" + taskId, e);
         }
     }
@@ -255,7 +275,7 @@ public class ActivityManagerWrapper {
     public void removeAllRecentTasks() {
         try {
             getService().removeAllVisibleRecentTasks();
-        } catch (RemoteException e) {
+        } catch (Throwable e) {
             Log.w(TAG, "Failed to remove all tasks", e);
         }
     }
@@ -274,7 +294,7 @@ public class ActivityManagerWrapper {
     public boolean isLockToAppActive() {
         try {
             return getService().getLockTaskModeState() != LOCK_TASK_MODE_NONE;
-        } catch (RemoteException e) {
+        } catch (Throwable e) {
             return false;
         }
     }
@@ -285,7 +305,7 @@ public class ActivityManagerWrapper {
     public boolean isLockTaskKioskModeActive() {
         try {
             return getService().getLockTaskModeState() == LOCK_TASK_MODE_LOCKED;
-        } catch (RemoteException e) {
+        } catch (Throwable e) {
             return false;
         }
     }

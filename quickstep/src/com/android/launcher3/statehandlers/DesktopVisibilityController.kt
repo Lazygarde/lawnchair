@@ -177,15 +177,19 @@ constructor(
     private var backgroundStateEnabled = false
     private var gestureInProgress = false
 
-    private var desktopTaskListener: DesktopTaskListenerImpl?
+    private var desktopTaskListener: DesktopTaskListenerImpl? = null
 
     init {
-        desktopTaskListener = DesktopTaskListenerImpl(this, context)
-        systemUiProxy.setDesktopTaskListener(desktopTaskListener)
+        try {
+            desktopTaskListener = DesktopTaskListenerImpl(this, context)
+            systemUiProxy.setDesktopTaskListener(desktopTaskListener)
 
-        lifecycleTracker.addCloseable {
-            desktopTaskListener = null
-            systemUiProxy.setDesktopTaskListener(null)
+            lifecycleTracker.addCloseable {
+                desktopTaskListener = null
+                systemUiProxy.setDesktopTaskListener(null)
+            }
+        } catch (t: Throwable) {
+            // LC-Ignored
         }
     }
 
@@ -671,7 +675,7 @@ constructor(
         private val controller = WeakReference(controller)
         private val displayManager: DisplayManager = context.getSystemService(DisplayManager::class.java)
         private val displayId = if (Utilities.ATLEAST_R) {
-            context.displayId
+            context.display?.displayId ?: DEFAULT_DISPLAY
         } else {
             displayManager.displays[DEFAULT_DISPLAY].displayId
         }

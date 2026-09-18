@@ -240,7 +240,11 @@ public class TaskbarAllAppsSlideInView extends AbstractSlideInView<TaskbarOverla
             dispatcher.registerOnBackInvokedCallback(
                     OnBackInvokedDispatcher.PRIORITY_DEFAULT, this);
         }
-        CrossWindowBlurListeners.getInstance().addListener(MAIN_EXECUTOR, mWindowBlurListener);
+        try {
+            CrossWindowBlurListeners.getInstance().addListener(MAIN_EXECUTOR, mWindowBlurListener);
+        } catch (Throwable t) {
+            // LC-Ignored
+        }
     }
 
     @Override
@@ -254,7 +258,11 @@ public class TaskbarAllAppsSlideInView extends AbstractSlideInView<TaskbarOverla
         if (dispatcher != null) {
             dispatcher.unregisterOnBackInvokedCallback(this);
         }
-        CrossWindowBlurListeners.getInstance().removeListener(mWindowBlurListener);
+        try {
+            CrossWindowBlurListeners.getInstance().removeListener(mWindowBlurListener);
+        } catch (Throwable t) {
+            // LC-Ignored
+        }
     }
 
     @Override

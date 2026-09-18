@@ -172,7 +172,7 @@ public class TaskStackChangeListeners {
                     if (!LawnchairQuickstepCompat.ATLEAST_V) return;
                     ActivityTaskManager.getService().registerTaskStackListener(this);
                     mRegistered = true;
-                } catch (NoClassDefFoundError | ExceptionInInitializerError | Exception e) {
+                } catch (Throwable e) {
                     // pE-TODO(CompatTier2): Find a way to deal with LawnchairQuickstepCompat instead of NoClassDefFoundError | ExceptionInInitializerError catch
                     Log.w(TAG, "Failed to call registerTaskStackListener", e);
                 }
@@ -191,7 +191,7 @@ public class TaskStackChangeListeners {
                     if (!LawnchairQuickstepCompat.ATLEAST_V) return;
                     ActivityTaskManager.getService().unregisterTaskStackListener(this);
                     mRegistered = false;
-                } catch (NoClassDefFoundError | ExceptionInInitializerError | Exception e) {
+                } catch (Throwable e) {
                     // pE-TODO(CompatTier2): Find a way to deal with LawnchairQuickstepCompat instead of NoClassDefFoundError | ExceptionInInitializerError catch
                     Log.w(TAG, "Failed to call unregisterTaskStackListener", e);
                 }

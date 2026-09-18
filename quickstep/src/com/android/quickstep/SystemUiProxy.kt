@@ -209,7 +209,7 @@ class SystemUiProxy @Inject constructor(@ApplicationContext private val context:
     ) {
         try {
             callback.invoke()
-        } catch (e: RemoteException) {
+        } catch (e: Throwable) {
             Log.w(tag, errorMsg.invoke(), e)
         }
     }

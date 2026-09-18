@@ -62,7 +62,13 @@ public class AssistContentRequester {
             Collections.synchronizedMap(new WeakHashMap<>());
 
     public AssistContentRequester(Context context) {
-        mActivityTaskManager = ActivityTaskManager.getService();
+        IActivityTaskManager atm = null;
+        try {
+            atm = ActivityTaskManager.getService();
+        } catch (Throwable t) {
+            // LC-Ignored
+        }
+        mActivityTaskManager = atm;
         mAttributionTag = context.getAttributionTag();
         mPackageName = context.getApplicationContext().getPackageName();
         mCallbackExecutor = Executors.MAIN_EXECUTOR;
@@ -79,10 +85,12 @@ public class AssistContentRequester {
         // ActivityTaskManager interaction here is synchronous, so call off the main thread.
         mSystemInteractionExecutor.execute(() -> {
             try {
-                mActivityTaskManager.requestAssistDataForTask(
-                        new AssistDataReceiver(callback, this), taskId, mPackageName,
-                        mAttributionTag, false /* fetchStructure */);
-            } catch (RemoteException e) {
+                if (mActivityTaskManager != null) {
+                    mActivityTaskManager.requestAssistDataForTask(
+                            new AssistDataReceiver(callback, this), taskId, mPackageName,
+                            mAttributionTag, false /* fetchStructure */);
+                }
+            } catch (Throwable e) {
                 Log.e(TAG, "Requesting assist content failed for task: " + taskId, e);
             }
         });

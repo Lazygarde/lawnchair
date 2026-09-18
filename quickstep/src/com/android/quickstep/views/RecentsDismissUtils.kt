@@ -16,6 +16,8 @@
 
 package com.android.quickstep.views
 
+import com.android.quickstep.util.safeDisplayId
+
 import android.app.ActivityTaskManager.INVALID_TASK_ID
 import android.view.View
 import androidx.core.graphics.toRectF
@@ -331,7 +333,7 @@ constructor(
                     // tasks), and closing all tasks on a desk doesn't always necessarily mean that
                     // the desk will be removed. So, there are no guarantees that the below call to
                     // `ActivityManagerWrapper::removeAllRecentTasks()` will be enough.
-                    if (areMultiDesksFlagsEnabled() && context.displayId.isExternalDisplay) {
+                    if (areMultiDesksFlagsEnabled() && context.safeDisplayId.isExternalDisplay) {
                         mUtils.addOnDeskAddedListener(launchNewDeskListener)
                     }
                     systemUiProxy.removeAllDesks()
@@ -340,7 +342,7 @@ constructor(
                     finishRecentsAnimation(/* toRecents */ true, /* shouldPip */ false) {
                         uiHelperExecutor.execute { activityManagerWrapper.removeAllRecentTasks() }
                         removeAllTaskViews()
-                        if (context.displayId.isDefaultDisplay || !areMultiDesksFlagsEnabled()) {
+                        if (context.safeDisplayId.isDefaultDisplay || !areMultiDesksFlagsEnabled()) {
                             startHome()
                         }
                     }
@@ -961,7 +963,7 @@ constructor(
                     // last task of the previous desk is removed.
                     if (
                         areMultiDesksFlagsEnabled() &&
-                            context.displayId.isExternalDisplay &&
+                            context.safeDisplayId.isExternalDisplay &&
                             taskViewCount == 1 &&
                             contains(dismissedTaskView)
                     ) {
@@ -1093,7 +1095,7 @@ constructor(
                     if (dismissedTaskView === homeTaskView) {
                         updateEmptyMessage()
                     } else {
-                        if (!areMultiDesksFlagsEnabled() || context.displayId.isDefaultDisplay) {
+                        if (!areMultiDesksFlagsEnabled() || context.safeDisplayId.isDefaultDisplay) {
                             startHome()
                         }
                     }

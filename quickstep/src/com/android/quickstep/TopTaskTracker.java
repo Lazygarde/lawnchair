@@ -113,8 +113,16 @@ public class TopTaskTracker extends ISplitScreenListener.Stub implements TaskSta
             mMainStagePosition.stageType = SplitConfigurationOptions.STAGE_TYPE_MAIN;
             mSideStagePosition.stageType = SplitConfigurationOptions.STAGE_TYPE_SIDE;
 
-            TaskStackChangeListeners.getInstance().registerTaskStackListener(this);
-            systemUiProxy.registerSplitScreenListener(this);
+            try {
+                TaskStackChangeListeners.getInstance().registerTaskStackListener(this);
+            } catch (Throwable t) {
+                // LC-Ignored
+            }
+            try {
+                systemUiProxy.registerSplitScreenListener(this);
+            } catch (Throwable t) {
+                // LC-Ignored
+            }
         }
 
         tracker.addCloseable(() -> {
@@ -122,8 +130,16 @@ public class TopTaskTracker extends ISplitScreenListener.Stub implements TaskSta
                 return;
             }
 
-            TaskStackChangeListeners.getInstance().unregisterTaskStackListener(this);
-            systemUiProxy.unregisterSplitScreenListener(this);
+            try {
+                TaskStackChangeListeners.getInstance().unregisterTaskStackListener(this);
+            } catch (Throwable t) {
+                // LC-Ignored
+            }
+            try {
+                systemUiProxy.unregisterSplitScreenListener(this);
+            } catch (Throwable t) {
+                // LC-Ignored
+            }
         });
 
         mContext = context;

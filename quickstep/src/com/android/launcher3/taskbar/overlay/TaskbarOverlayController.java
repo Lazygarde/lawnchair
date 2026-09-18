@@ -239,7 +239,13 @@ public final class TaskbarOverlayController {
             radius = 0;
             // intentionally falling through in case a non-0 blur was previously set.
         }
-        if (!CrossWindowBlurListeners.getInstance().isCrossWindowBlurEnabled()) {
+        boolean crossWindowBlurEnabled = false;
+        try {
+            crossWindowBlurEnabled = CrossWindowBlurListeners.getInstance().isCrossWindowBlurEnabled();
+        } catch (Throwable t) {
+            // LC-Ignored
+        }
+        if (!crossWindowBlurEnabled) {
             Log.d(TAG, "setBackgroundBlurRadius: disabled, setting to 0");
             radius = 0;
             // intentionally falling through in case a non-0 blur was previously set.
@@ -303,8 +309,13 @@ public final class TaskbarOverlayController {
     }
 
     boolean isBackgroundBlurEnabled() {
-        return BlurUtils.supportsBlursOnWindows()
-                && CrossWindowBlurListeners.getInstance().isCrossWindowBlurEnabled();
+        boolean crossWindowBlurEnabled = false;
+        try {
+            crossWindowBlurEnabled = CrossWindowBlurListeners.getInstance().isCrossWindowBlurEnabled();
+        } catch (Throwable t) {
+            // LC-Ignored
+        }
+        return BlurUtils.supportsBlursOnWindows() && crossWindowBlurEnabled;
     }
 
     /**

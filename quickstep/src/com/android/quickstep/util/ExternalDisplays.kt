@@ -17,8 +17,11 @@
 package com.android.quickstep.util
 
 import android.app.TaskInfo
+import android.content.Context
+import android.hardware.display.DisplayManager
 import android.view.Display.DEFAULT_DISPLAY
 import android.view.Display.INVALID_DISPLAY
+import com.android.launcher3.Utilities
 import com.android.systemui.shared.recents.model.Task
 
 /** Whether this displayId belongs to an external display */
@@ -50,3 +53,14 @@ val Task?.isExternalDisplay
 /** Returns displayId of this [TaskInfo], default to [DEFAULT_DISPLAY] */
 val TaskInfo?.safeDisplayId
     get() = this?.displayId.safeDisplayId
+
+val Context?.safeDisplayId: Int
+    get() {
+        if (this == null) return DEFAULT_DISPLAY
+        return if (Utilities.ATLEAST_R) {
+            this.display?.displayId ?: DEFAULT_DISPLAY
+        } else {
+            (this.getSystemService(Context.DISPLAY_SERVICE) as? DisplayManager)
+                ?.displays?.firstOrNull()?.displayId ?: DEFAULT_DISPLAY
+        }
+    }

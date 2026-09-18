@@ -18,6 +18,4 @@ android {
 }
 
 dependencies {
-    annotationProcessor libs.rikka.annotation.processor
-    compileOnly libs.rikka.annotation
 }

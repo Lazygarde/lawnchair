@@ -15,7 +15,7 @@ plugins {
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.google.ksp)
     alias(libs.plugins.google.protobuf)
-    alias(libs.plugins.rikka.refine)
+
 }
 
 apply from: rootProject.file('gradle/launcher-version.gradle')
@@ -180,7 +180,7 @@ dependencies {
     implementation libs.javax.inject
     implementation libs.kotlinx.coroutines.android
     implementation libs.kotlinx.serialization.json
-    implementation libs.rikka.refine.runtime
+
 
     implementation libs.androidx.constraintlayout
     implementation libs.androidx.datastore.preferences

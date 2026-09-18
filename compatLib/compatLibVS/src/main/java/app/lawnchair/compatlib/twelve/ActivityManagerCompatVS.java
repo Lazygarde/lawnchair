@@ -41,7 +41,7 @@ public class ActivityManagerCompatVS extends ActivityManagerCompatVR {
             int taskId, boolean isLowResolution, boolean takeSnapshotIfNeeded) {
         try {
             return ActivityTaskManager.getService().getTaskSnapshot(taskId, isLowResolution);
-        } catch (RemoteException e) {
+        } catch (Throwable e) {
             Log.w(TAG, "Failed to getTaskSnapshot", e);
             return null;
         }
@@ -86,7 +86,7 @@ public class ActivityManagerCompatVS extends ActivityManagerCompatVR {
         }
         try {
             ActivityTaskManager.getService().startRecentsActivity(intent, eventTime, runner);
-        } catch (RemoteException e) {
+        } catch (Throwable e) {
             Log.e(TAG, "Failed to cancel recents animation", e);
         }
     }
@@ -95,25 +95,37 @@ public class ActivityManagerCompatVS extends ActivityManagerCompatVR {
     @Override
     public ActivityManager.RunningTaskInfo getRunningTask(boolean filterOnlyVisibleRecents) {
         // Note: The set of running tasks from the system is ordered by recency
-        List<ActivityManager.RunningTaskInfo> tasks =
-                ActivityTaskManager.getInstance().getTasks(1, filterOnlyVisibleRecents);
-        if (tasks.isEmpty()) {
+        try {
+            List<ActivityManager.RunningTaskInfo> tasks =
+                    ActivityTaskManager.getInstance().getTasks(1, filterOnlyVisibleRecents);
+            if (tasks.isEmpty()) {
+                return null;
+            }
+            return tasks.get(0);
+        } catch (Throwable t) {
             return null;
         }
-        return tasks.get(0);
     }
 
     @NonNull
     @Override
     public List<ActivityManager.RecentTaskInfo> getRecentTasks(int numTasks, int userId) {
-        return ActivityTaskManager.getInstance()
-                .getRecentTasks(numTasks, RECENT_IGNORE_UNAVAILABLE, userId);
+        try {
+            return ActivityTaskManager.getInstance()
+                    .getRecentTasks(numTasks, RECENT_IGNORE_UNAVAILABLE, userId);
+        } catch (Throwable t) {
+            return java.util.Collections.emptyList();
+        }
     }
 
     @NonNull
     @Override
     public List<ActivityManager.RunningTaskInfo> getRunningTasks(boolean filterOnlyVisibleRecents) {
-        return ActivityTaskManager.getInstance()
-                .getTasks(NUM_RECENT_ACTIVITIES_REQUEST, filterOnlyVisibleRecents);
+        try {
+            return ActivityTaskManager.getInstance()
+                    .getTasks(NUM_RECENT_ACTIVITIES_REQUEST, filterOnlyVisibleRecents);
+        } catch (Throwable t) {
+            return java.util.Collections.emptyList();
+        }
     }
 }

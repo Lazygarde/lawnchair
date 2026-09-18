@@ -116,7 +116,11 @@ public class SurfaceTransaction {
          * @return this Builder
          */
         public SurfaceProperties setBackgroundBlurRadius(int radius) {
-            mTransaction.setBackgroundBlurRadius(mSurface, radius);
+            try {
+                mTransaction.setBackgroundBlurRadius(mSurface, radius);
+            } catch (Throwable t) {
+                // LC-Ignored
+            }
             return this;
         }
 

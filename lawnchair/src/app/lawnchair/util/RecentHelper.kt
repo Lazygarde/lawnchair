@@ -47,11 +47,11 @@ object RecentHelper {
                             }
                         }
                     }
-                } catch (e: Exception) {
+                } catch (e: Throwable) {
                     e.printStackTrace()
                 }
             }
-        } catch (exception: Exception) {
+        } catch (exception: Throwable) {
             ActivityManagerWrapper.getInstance().removeAllRecentTasks()
         }
     }

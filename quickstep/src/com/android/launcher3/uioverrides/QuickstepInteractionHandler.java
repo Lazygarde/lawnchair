@@ -19,8 +19,6 @@ import static com.android.launcher3.logging.StatsLogManager.LauncherEvent.LAUNCH
 import static com.android.launcher3.logging.StatsLogManager.LauncherEvent.LAUNCHER_SPLIT_WIDGET_ATTEMPT;
 
 import android.app.ActivityOptions;
-import android.app.ActivityTaskManager;
-import android.app.IActivityTaskManagerHidden;
 import android.app.PendingIntent;
 import android.content.Intent;
 import android.os.RemoteException;
@@ -37,7 +35,7 @@ import com.android.launcher3.widget.LauncherAppWidgetHostView;
 
 import java.util.function.Consumer;
 
-import dev.rikka.tools.refine.Refine;
+
 import app.lawnchair.LawnchairApp;
 
 /** Provides a Quickstep specific animation when launching an activity from an app widget. */
@@ -83,26 +81,8 @@ class QuickstepInteractionHandler implements RemoteViews.InteractionHandler,
         } catch (NullPointerException e) {
             Log.e("pE(C7evQZDJ)", "Failed to get activity launch options");
         }
-        if (!pendingIntent.isActivity()) {
-            // In the event this pending intent eventually launches an activity, i.e. a trampoline,
-            // use the Quickstep transition animation.
-            try {
-                IActivityTaskManagerHidden atm = Refine.unsafeCast(ActivityTaskManager.getService());
-                try {
-                    atm.registerRemoteAnimationForNextActivityStart(
-                            pendingIntent.getCreatorPackage(),
-                            activityOptions.options.getRemoteAnimationAdapter(),
-                            activityOptions.options.getLaunchCookie());
-                } catch (NoSuchMethodError e) {
-                    atm.registerRemoteAnimationForNextActivityStart(
-                            pendingIntent.getCreatorPackage(),
-                            activityOptions.options.getRemoteAnimationAdapter());
-                }
-            } catch (NullPointerException | RemoteException e) {
-                // pE-TODO(C7evQZDJ): Remove NullPointerException after fixing
-                // Do nothing.
-            }
-        }
+        // Trampoline animation registration via hidden ATM API removed (non-SDK, Android 16+
+        // enforcement). The fallback path below still applies the correct activity options.
         try {
             activityOptions.options.setPendingIntentLaunchFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             activityOptions.options.setSplashScreenStyle(SplashScreen.SPLASH_SCREEN_STYLE_ICON);

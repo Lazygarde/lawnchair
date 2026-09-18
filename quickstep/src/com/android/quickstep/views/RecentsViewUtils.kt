@@ -16,6 +16,8 @@
 
 package com.android.quickstep.views
 
+import com.android.quickstep.util.safeDisplayId
+
 import android.animation.AnimatorSet
 import android.animation.ObjectAnimator
 import android.graphics.PointF
@@ -314,7 +316,7 @@ class RecentsViewUtils(private val recentsView: RecentsView<*, *>) : DesktopVisi
     override fun onDeskAdded(displayId: Int, deskId: Int) {
         with(recentsView) {
             // Ignore desk changes that don't belong to this display.
-            if (displayId != mContainer.displayId) {
+            if (displayId != mContainer.asContext().safeDisplayId) {
                 return
             }
 
@@ -352,7 +354,7 @@ class RecentsViewUtils(private val recentsView: RecentsView<*, *>) : DesktopVisi
     override fun onDeskRemoved(displayId: Int, deskId: Int) {
         with(recentsView) {
             // Ignore desk changes that don't belong to this display.
-            if (displayId != mContainer.displayId) {
+            if (displayId != mContainer.asContext().safeDisplayId) {
                 return
             }
 

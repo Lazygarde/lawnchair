@@ -209,7 +209,7 @@ public class RecentsAnimationDeviceState implements DisplayInfoChangeListener, E
         try {
             mPipIsActive = LawnchairApp.isRecentsEnabled() && Utilities.ATLEAST_S && ActivityTaskManager.getService().getRootTaskInfo(
                     WINDOWING_MODE_PINNED, ACTIVITY_TYPE_UNDEFINED) != null;
-        } catch (RemoteException e) {
+        } catch (Throwable e) {
             // Do nothing
         }
         mPipListener = new TaskStackChangeListener() {
@@ -224,9 +224,14 @@ public class RecentsAnimationDeviceState implements DisplayInfoChangeListener, E
             }
         };
         if (Utilities.ATLEAST_Q) {
-            TaskStackChangeListeners.getInstance().registerTaskStackListener(mPipListener);
-            lifeCycle.addCloseable(() ->
-                    TaskStackChangeListeners.getInstance().unregisterTaskStackListener(mPipListener));
+            try {
+                TaskStackChangeListeners.getInstance().registerTaskStackListener(mPipListener);
+            } catch (Throwable ignored) {}
+            lifeCycle.addCloseable(() -> {
+                try {
+                    TaskStackChangeListeners.getInstance().unregisterTaskStackListener(mPipListener);
+                } catch (Throwable ignored) {}
+            });
         }
     }
 
