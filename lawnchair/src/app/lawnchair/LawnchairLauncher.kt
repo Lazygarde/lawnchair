@@ -70,9 +70,8 @@ import com.android.launcher3.popup.SystemShortcut
 import com.android.launcher3.shortcuts.DeepShortcutView
 import com.android.launcher3.statemanager.StateManager
 import com.android.launcher3.statemanager.StateManager.StateHandler
-import com.android.launcher3.uioverrides.QuickstepLauncher
 import com.android.launcher3.uioverrides.states.AllAppsState
-import com.android.launcher3.uioverrides.states.BackgroundAppState
+
 import com.android.launcher3.uioverrides.states.OverviewState
 import com.android.launcher3.util.ActivityOptionsWrapper
 import com.android.launcher3.util.Executors
@@ -96,7 +95,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
-open class LawnchairLauncher : QuickstepLauncher() {
+open class LawnchairLauncher : LawnchairLauncherBase() {
     private val defaultOverlay by unsafeLazy { OverlayCallbackImpl(this) }
     private val prefs by unsafeLazy { PreferenceManager.getInstance(this) }
     private val preferenceManager2 by unsafeLazy { PreferenceManager2.getInstance(this) }
@@ -128,11 +127,10 @@ open class LawnchairLauncher : QuickstepLauncher() {
     }
     private val statusBarClockListener = object : StateManager.StateListener<LauncherState> {
         override fun onStateTransitionStart(toState: LauncherState) {
-            when (toState) {
-                is BackgroundAppState,
-                is OverviewState,
-                is AllAppsState,
-                -> {
+            when {
+                toState == LauncherState.BACKGROUND_APP ||
+                toState is OverviewState ||
+                toState is AllAppsState -> {
                     LawnchairApp.instance.restoreClockInStatusBar()
                 }
 

@@ -37,7 +37,7 @@ import com.android.launcher3.util.DaggerSingletonObject
 import com.android.launcher3.util.DisplayController
 import com.android.launcher3.util.Executors
 import com.android.launcher3.util.SafeCloseable
-import com.android.quickstep.RecentsModel
+import app.lawnchair.RecentsCompat
 import com.google.android.msdl.data.model.FeedbackLevel
 import com.google.android.msdl.domain.MSDLPlayer
 import javax.inject.Inject
@@ -49,9 +49,8 @@ class PreferenceManager @Inject constructor(
     SafeCloseable {
     private val idp get() = InvariantDeviceProfile.INSTANCE.get(context)
     private val dc get() = DisplayController.INSTANCE.get(context)
-    private val mRecentsModel get() = RecentsModel.INSTANCE.get(context)
     private val reloadIcons: () -> Unit = {
-        mRecentsModel.onThemeChanged()
+        RecentsCompat.onThemeChanged(context)
         Executors.MODEL_EXECUTOR.execute {
             LauncherAppState.INSTANCE.get(context).iconCache.clearMemoryCache()
             LauncherAppState.INSTANCE.get(context).model.reloadIfActive()

@@ -53,7 +53,6 @@ import com.android.launcher3.LauncherApplication
 import com.android.launcher3.LauncherHost
 import com.android.launcher3.R
 import com.android.launcher3.Utilities
-import com.android.quickstep.RecentsActivity
 import com.android.systemui.shared.system.QuickStepContract
 import java.io.File
 
@@ -206,7 +205,7 @@ open class LawnchairApp : LauncherApplication() {
         }
 
         val isRecentsComponent = recentsComponent.packageName == packageName &&
-            recentsComponent.className == RecentsActivity::class.java.name
+            recentsComponent.className == "com.android.quickstep.RecentsActivity"
         if (!isRecentsComponent) {
             Log.d(TAG, "config_recentsComponentName ($recentsComponent) is not Lawnchair, disabling recents")
             return false
