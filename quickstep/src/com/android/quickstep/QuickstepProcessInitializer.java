@@ -64,8 +64,8 @@ public class QuickstepProcessInitializer extends MainProcessInitializer {
                 if (!Utilities.ATLEAST_Q) return;
                 ThreadedRenderer.setContextPriority(
                                 ThreadedRenderer.EGL_CONTEXT_PRIORITY_HIGH_IMG);
-        } catch (Exception e) {
-                Log.e(TAG, "init: " + e);
+        } catch (Throwable t) {
+                Log.e(TAG, "init: " + t);
         }
     }
 }
