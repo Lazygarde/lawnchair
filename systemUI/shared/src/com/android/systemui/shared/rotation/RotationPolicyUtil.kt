@@ -33,9 +33,12 @@ class RotationPolicyUtil {
         fun isRotationLocked(context: Context): Boolean? {
             try {
                 return RotationPolicy.isRotationLocked(context)
-            } catch (e: SecurityException) {
+            } catch (e: Throwable) {
                 // TODO(b/279561841): RotationPolicy uses the current user to resolve the setting
                 // which may change before the rotation watcher can be unregistered
+                // LC-Note: com.android.internal.view.RotationPolicy is non-SDK, so without a
+                // hidden-API exemption this throws NoClassDefFoundError -- an Error, which a
+                // `catch (SecurityException)` would let through and kill the process.
                 Log.e("RotationPolicy", "Failed to get isRotationLocked", e)
                 return null
             }

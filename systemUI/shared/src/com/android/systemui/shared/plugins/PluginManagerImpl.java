@@ -278,8 +278,14 @@ public class PluginManagerImpl extends BroadcastReceiver implements PluginManage
 
         @Override
         public void uncaughtException(Thread thread, Throwable throwable) {
-            if (SystemProperties.getBoolean("plugin.debugging", false)) {
-                return;
+            // LC-Note: non-SDK, and this runs while the process is already handling a crash --
+            // a NoClassDefFoundError here would replace the real stack trace with a useless one.
+            try {
+                if (SystemProperties.getBoolean("plugin.debugging", false)) {
+                    return;
+                }
+            } catch (Throwable ignored) {
+                // Treat as "not debugging" and carry on disabling the offending plugins.
             }
             // Search for and disable plugins that may have been involved in this crash.
             boolean disabledAny = checkStack(throwable);

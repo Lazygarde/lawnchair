@@ -85,7 +85,9 @@ public class RecentsAnimationController {
                 try {
                     WindowManagerGlobal.getWindowManagerService().setRecentsAppBehindSystemBars(
                             useLauncherSysBarFlags);
-                } catch (RemoteException e) {
+                } catch (Throwable e) {
+                    // LC-Note: WindowManagerGlobal.getWindowManagerService() is non-SDK, so this
+                    // also has to absorb NoSuchMethodError, not just RemoteException.
                     Log.e(TAG, "Unable to reach window manager", e);
                 }
             });

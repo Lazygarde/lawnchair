@@ -89,8 +89,18 @@ public class RotationButtonController {
     private static final String TAG = "RotationButtonController";
     private static final int BUTTON_FADE_IN_OUT_DURATION_MS = 100;
     private static final int NAVBAR_HIDDEN_PENDING_ICON_TIMEOUT_MS = 20000;
-    private static final boolean OEM_DISALLOW_ROTATION_IN_SUW =
-            SystemProperties.getBoolean("ro.setupwizard.rotation_locked", false);
+    // LC-Note: android.os.SystemProperties is non-SDK. Reading it straight from a static
+    // initializer means a NoClassDefFoundError takes down the whole class as an
+    // ExceptionInInitializerError the first time anything touches RotationButtonController.
+    private static final boolean OEM_DISALLOW_ROTATION_IN_SUW = readOemDisallowRotationInSuw();
+
+    private static boolean readOemDisallowRotationInSuw() {
+        try {
+            return SystemProperties.getBoolean("ro.setupwizard.rotation_locked", false);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
     private static final Interpolator LINEAR_INTERPOLATOR = new LinearInterpolator();
 
     private static final int NUM_ACCEPTED_ROTATION_SUGGESTIONS_FOR_INTRODUCTION = 3;

@@ -109,13 +109,18 @@ public class DepthController extends BaseDepthController implements StateHandler
             @Override
             public void onViewAttachedToWindow(View view) {
                 if (Utilities.ATLEAST_S) {
-                    try {
-                            UI_HELPER_EXECUTOR.execute(() ->
-                                    CrossWindowBlurListeners.getInstance().addListener(
-                                            mLauncher.getMainExecutor(), mCrossWindowBlurListener));
-                    } catch (Throwable t) {
-                        // LC-Ignored
-                    }
+                    // LC-Note: the guard has to live INSIDE the lambda. execute() only queues the
+                    // work, so a try/catch around it runs on this thread while
+                    // CrossWindowBlurListeners (non-SDK) throws its NoSuchMethodError later, on
+                    // the UI helper thread, where nothing would catch it.
+                    UI_HELPER_EXECUTOR.execute(() -> {
+                        try {
+                            CrossWindowBlurListeners.getInstance().addListener(
+                                    mLauncher.getMainExecutor(), mCrossWindowBlurListener);
+                        } catch (Throwable t) {
+                            // LC-Ignored: blur stays off.
+                        }
+                    });
                 }
                 mLauncher.getScrimView().addOpaquenessListener(mOpaquenessListener);
 
@@ -148,13 +153,15 @@ public class DepthController extends BaseDepthController implements StateHandler
 
     private void removeSecondaryListeners() {
         if (Utilities.ATLEAST_S) {
-            try {
-                UI_HELPER_EXECUTOR.execute(() ->
+            // LC-Note: guard inside the lambda -- see addListener above.
+            UI_HELPER_EXECUTOR.execute(() -> {
+                try {
                     CrossWindowBlurListeners.getInstance()
-                        .removeListener(mCrossWindowBlurListener));
-            } catch (Throwable t) {
-                // LC-Ignored
-            }
+                            .removeListener(mCrossWindowBlurListener);
+                } catch (Throwable t) {
+                    // LC-Ignored
+                }
+            });
         }
         if (mOpaquenessListener != null) {
             mLauncher.getScrimView().removeOpaquenessListener(mOpaquenessListener);

@@ -52,6 +52,7 @@ import com.android.launcher3.views.ScrimColors;
 import com.android.launcher3.views.ScrimView;
 import com.android.launcher3.views.ScrimColorsEvaluator;
 import com.android.quickstep.orientation.RecentsPagedOrientationHandler;
+import com.android.quickstep.util.ExternalDisplaysKt;
 import com.android.quickstep.util.AnimatorControllerWithResistance;
 import com.android.quickstep.util.ContextInitListener;
 import com.android.quickstep.views.RecentsView;
@@ -257,7 +258,7 @@ public abstract class BaseContainerInterface<STATE_TYPE extends BaseState<STATE_
         STATE_TYPE startState = container.getStateManager().getRestState();
         final var context = container.asContext();
         if (DesktopVisibilityController.INSTANCE.get(context).isInDesktopModeAndNotInOverview(
-                context.getDisplayId()) && endTarget == null) {
+                ExternalDisplaysKt.getSafeDisplayId(context)) && endTarget == null) {
             // When tapping on the Taskbar in Desktop mode, reset to BackgroundApp to avoid the
             // home screen icons flickering. Technically we could probably be do this for
             // non-desktop as well, but limiting to this use case to reduce risk.

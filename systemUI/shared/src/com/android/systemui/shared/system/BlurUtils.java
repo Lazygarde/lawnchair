@@ -21,8 +21,20 @@ import static android.view.CrossWindowBlurListeners.CROSS_WINDOW_BLUR_SUPPORTED;
 import android.app.ActivityManager;
 import android.os.Build;
 import android.os.SystemProperties;
+import android.util.Log;
 
 public abstract class BlurUtils {
+
+    private static final String TAG = "BlurUtils";
+
+    // LC-Note: every symbol the real check needs is non-SDK -- the
+    // CrossWindowBlurListeners.CROSS_WINDOW_BLUR_SUPPORTED field, ActivityManager.isHighEndGfx()
+    // and the whole android.os.SystemProperties class. Without a hidden-API exemption in the
+    // process they resolve to NoSuchFieldError / NoSuchMethodError / NoClassDefFoundError, which
+    // are Errors rather than Exceptions, so a plain `catch (Exception)` at the call site does not
+    // stop them. Probe once behind a Throwable guard and cache; blur is a visual nicety, so
+    // falling back to "unsupported" is the right answer when the platform will not tell us.
+    private static final boolean SUPPORTS_BLUR = computeSupportsBlursOnWindows();
 
     /**
      * If this device can render blurs.
@@ -30,7 +42,20 @@ public abstract class BlurUtils {
      * @return {@code true} when supported.
      */
     public static boolean supportsBlursOnWindows() {
-        return (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) && CROSS_WINDOW_BLUR_SUPPORTED && ActivityManager.isHighEndGfx()
-                && !SystemProperties.getBoolean("persist.sysui.disableBlur", false);
+        return SUPPORTS_BLUR;
+    }
+
+    private static boolean computeSupportsBlursOnWindows() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.S) {
+            return false;
+        }
+        try {
+            return CROSS_WINDOW_BLUR_SUPPORTED
+                    && ActivityManager.isHighEndGfx()
+                    && !SystemProperties.getBoolean("persist.sysui.disableBlur", false);
+        } catch (Throwable t) {
+            Log.w(TAG, "Cannot determine cross-window blur support, assuming unsupported", t);
+            return false;
+        }
     }
 }

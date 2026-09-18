@@ -20,7 +20,7 @@ import android.os.Handler
 import android.os.HandlerThread
 import android.os.Looper
 import android.os.Process
-import com.android.launcher3.Utilities
+import android.util.Log
 import com.android.launcher3.util.coroutines.DispatcherProvider
 import com.android.launcher3.util.coroutines.ProductionDispatchers
 import com.android.systemui.dagger.qualifiers.Background
@@ -34,6 +34,7 @@ import kotlinx.coroutines.SupervisorJob
 // TODO(b/407594919) - Adapt this to use new concurrency module.
 @Module
 object LauncherConcurrencyModule {
+    private const val TAG = "LauncherConcurrencyModule"
     // Slow BG executor can potentially affect UI if UI is waiting for an updated state from this
     // thread
     private const val BG_SLOW_DISPATCH_THRESHOLD = 1000L
@@ -46,13 +47,14 @@ object LauncherConcurrencyModule {
     fun provideBgLooper(): Looper {
         val thread = HandlerThread("LauncherBg", Process.THREAD_PRIORITY_BACKGROUND)
         thread.start()
-        if (Utilities.ATLEAST_P) {
-            thread
-                .getLooper()
-                .setSlowLogThresholdMs(BG_SLOW_DISPATCH_THRESHOLD, BG_SLOW_DELIVERY_THRESHOLD)
-        } else {
-            thread
-                .getLooper()
+        // LC-Note: Looper.setSlowLogThresholdMs is non-SDK, so without a hidden-API exemption it
+        // throws NoSuchMethodError -- an Error, not an Exception. This provider sits at the root
+        // of the Dagger graph, so letting it escape kills the process before the launcher draws.
+        // The call only tunes slow-dispatch logging, so skipping it costs nothing at runtime.
+        try {
+            thread.looper.setSlowLogThresholdMs(BG_SLOW_DISPATCH_THRESHOLD, BG_SLOW_DELIVERY_THRESHOLD)
+        } catch (t: Throwable) {
+            Log.w(TAG, "Cannot set slow log threshold on the background looper", t)
         }
         return thread.getLooper()
     }

@@ -200,13 +200,23 @@ class DesktopStateImpl(context: Context) : DesktopState {
             } ?: false
     }
 
+    // LC-Note: DISPLAY_CATEGORY_ALL_INCLUDING_DISABLED, Display.type, Display.minSizeDimensionDp
+    // and WindowManager.LARGE_SCREEN_SMALLEST_SCREEN_WIDTH_DP are all non-SDK. This is a property
+    // initializer, so an uncaught NoSuchMethodError here aborts construction of DesktopStateImpl
+    // and takes down whoever touched DesktopState. The only consumer below is behind `if (false)`,
+    // so reporting "no large screen" when the platform will not answer is harmless.
     private val deviceHasLargeScreen =
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.BAKLAVA) {
-            displayManager.getDisplays(DisplayManager.DISPLAY_CATEGORY_ALL_INCLUDING_DISABLED)
-                ?.filter { display -> display.type == Display.TYPE_INTERNAL }
-                ?.any { display ->
-                    display.minSizeDimensionDp >= WindowManager.LARGE_SCREEN_SMALLEST_SCREEN_WIDTH_DP
-                } ?: false
+            try {
+                displayManager.getDisplays(DisplayManager.DISPLAY_CATEGORY_ALL_INCLUDING_DISABLED)
+                    ?.filter { display -> display.type == Display.TYPE_INTERNAL }
+                    ?.any { display ->
+                        display.minSizeDimensionDp >=
+                            WindowManager.LARGE_SCREEN_SMALLEST_SCREEN_WIDTH_DP
+                    } ?: false
+            } catch (t: Throwable) {
+                false
+            }
         } else {
             false
         }

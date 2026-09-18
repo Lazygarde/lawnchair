@@ -191,6 +191,7 @@ import com.android.quickstep.TaskUtils;
 import com.android.quickstep.TouchInteractionService.TISBinder;
 import com.android.quickstep.fallback.window.RecentsWindowFlags;
 import com.android.quickstep.fallback.window.RecentsWindowManager;
+import com.android.quickstep.util.ExternalDisplaysKt;
 import com.android.quickstep.util.ActiveGestureProtoLogProxy;
 import com.android.quickstep.util.AsyncClockEventDelegate;
 import com.android.quickstep.util.LauncherUnfoldAnimationController;
@@ -1173,7 +1174,7 @@ public class QuickstepLauncher extends Launcher implements RecentsViewContainer,
                 DesktopVisibilityController.INSTANCE.get(this);
         if (ATLEAST_BAKLAVA) {
             if (!false
-                && desktopVisibilityController.isInDesktopModeAndNotInOverview(getDisplayId())
+                && desktopVisibilityController.isInDesktopModeAndNotInOverview(ExternalDisplaysKt.getSafeDisplayId(this))
                 && !desktopVisibilityController.isRecentsGestureInProgress()) {
                 // Return early to skip setting activity to appear as resumed
                 // TODO: b/333533253 - Remove after flag rollout
@@ -1497,7 +1498,7 @@ public class QuickstepLauncher extends Launcher implements RecentsViewContainer,
     @Override
     public boolean areDesktopTasksVisible() {
         return DesktopVisibilityController.INSTANCE.get(this)
-                .isInDesktopModeAndNotInOverview(getDisplayId());
+                .isInDesktopModeAndNotInOverview(ExternalDisplaysKt.getSafeDisplayId(this));
     }
 
     @Override

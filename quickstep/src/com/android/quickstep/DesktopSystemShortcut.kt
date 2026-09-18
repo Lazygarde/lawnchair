@@ -24,6 +24,7 @@ import com.android.launcher3.R
 import com.android.launcher3.logging.StatsLogManager.LauncherEvent
 import com.android.launcher3.popup.SystemShortcut
 import com.android.quickstep.fallback.window.RecentsWindowFlags.enableDesktopMenuOnSecondaryDisplay
+import com.android.quickstep.util.safeDisplayId
 import com.android.quickstep.views.RecentsView
 import com.android.quickstep.views.RecentsViewContainer
 import com.android.quickstep.views.TaskContainer
@@ -79,7 +80,7 @@ class DesktopSystemShortcut(
                     val desktopModeCompatPolicy = DesktopModeCompatPolicy(context)
                     val isShortcutSupported =
                         enableDesktopMenuOnSecondaryDisplay ||
-                            context.displayId == Display.DEFAULT_DISPLAY
+                            context.safeDisplayId == Display.DEFAULT_DISPLAY
 
                     return when {
                         !isShortcutSupported -> null

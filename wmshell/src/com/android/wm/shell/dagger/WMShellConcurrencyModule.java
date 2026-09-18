@@ -118,10 +118,18 @@ public abstract class WMShellConcurrencyModule {
                 mainThread = createShellMainThread();
                 mainThread.start();
             }
-            if (Build.IS_DEBUGGABLE) {
-                mainThread.getLooper().setTraceTag(Trace.TRACE_TAG_WINDOW_MANAGER);
-                mainThread.getLooper().setSlowLogThresholdMs(MSGQ_SLOW_DISPATCH_THRESHOLD_MS,
-                        MSGQ_SLOW_DELIVERY_THRESHOLD_MS);
+            // LC-Note: Build.IS_DEBUGGABLE, Looper.setTraceTag and
+            // Looper.setSlowLogThresholdMs are all non-SDK. Without a hidden-API
+            // exemption each throws an Error (not an Exception) that would escape this
+            // Dagger provider and kill the process. All three are debug-only tracing.
+            try {
+                if (Build.IS_DEBUGGABLE) {
+                    mainThread.getLooper().setTraceTag(Trace.TRACE_TAG_WINDOW_MANAGER);
+                    mainThread.getLooper().setSlowLogThresholdMs(MSGQ_SLOW_DISPATCH_THRESHOLD_MS,
+                            MSGQ_SLOW_DELIVERY_THRESHOLD_MS);
+                }
+            } catch (Throwable t) {
+                // Tracing stays off.
             }
             return Handler.createAsync(mainThread.getLooper());
         }
@@ -169,10 +177,18 @@ public abstract class WMShellConcurrencyModule {
     public static Handler provideShellAnimationHandler() {
         HandlerThread animThread = new HandlerThread("wmshell.anim", THREAD_PRIORITY_DISPLAY);
         animThread.start();
-        if (Build.IS_DEBUGGABLE) {
-            animThread.getLooper().setTraceTag(Trace.TRACE_TAG_WINDOW_MANAGER);
-            animThread.getLooper().setSlowLogThresholdMs(MSGQ_SLOW_DISPATCH_THRESHOLD_MS,
-                    MSGQ_SLOW_DELIVERY_THRESHOLD_MS);
+        // LC-Note: Build.IS_DEBUGGABLE, Looper.setTraceTag and
+        // Looper.setSlowLogThresholdMs are all non-SDK. Without a hidden-API
+        // exemption each throws an Error (not an Exception) that would escape this
+        // Dagger provider and kill the process. All three are debug-only tracing.
+        try {
+            if (Build.IS_DEBUGGABLE) {
+                animThread.getLooper().setTraceTag(Trace.TRACE_TAG_WINDOW_MANAGER);
+                animThread.getLooper().setSlowLogThresholdMs(MSGQ_SLOW_DISPATCH_THRESHOLD_MS,
+                        MSGQ_SLOW_DELIVERY_THRESHOLD_MS);
+            }
+        } catch (Throwable t) {
+            // Tracing stays off.
         }
         return Handler.createAsync(animThread.getLooper());
     }

@@ -140,10 +140,21 @@ public class Transitions implements RemoteCallable<Transitions>,
     static final String TAG = "ShellTransitions";
 
     // If set, will print the stack trace for transition starts/finishes within the process
-    static final boolean DEBUG_START_TRANSITION = Build.IS_DEBUGGABLE &&
-            SystemProperties.getBoolean("persist.wm.debug.start_shell_transition", false);
-    static final boolean DEBUG_FINISH_TRANSITION = Build.IS_DEBUGGABLE &&
-            SystemProperties.getBoolean("persist.wm.debug.finish_shell_transition", false);
+    // LC-Note: Build.IS_DEBUGGABLE and android.os.SystemProperties are both non-SDK. Reading them
+    // straight from a static initializer turns a NoSuchFieldError / NoClassDefFoundError into an
+    // ExceptionInInitializerError that permanently breaks this class for the whole process.
+    static final boolean DEBUG_START_TRANSITION =
+            debugFlag("persist.wm.debug.start_shell_transition");
+    static final boolean DEBUG_FINISH_TRANSITION =
+            debugFlag("persist.wm.debug.finish_shell_transition");
+
+    private static boolean debugFlag(String property) {
+        try {
+            return Build.IS_DEBUGGABLE && SystemProperties.getBoolean(property, false);
+        } catch (Throwable t) {
+            return false;
+        }
+    }
 
     /** Set to {@code true} to enable shell transitions. */
     public static final boolean ENABLE_SHELL_TRANSITIONS = true;
