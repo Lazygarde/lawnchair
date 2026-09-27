@@ -85,6 +85,7 @@ public class ViewPool<T extends View & Reusable> {
             Log.d(TAG, "initPool complete");
             mViewPoolInitThread = null;
         }, "ViewPool-init");
+        mViewPoolInitThread.setDaemon(true); // Do not block JVM shutdown
         mViewPoolInitThread.start();
     }
 

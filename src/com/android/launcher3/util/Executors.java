@@ -114,6 +114,11 @@ public class Executors {
                 Process.setThreadPriority(mPriority);
                 runnable.run();
             }, mNamePrefix + mCount.incrementAndGet());
+            // Daemon threads do not block JVM shutdown (DestroyJavaVM /
+            // WaitForOtherNonDaemonThreadsToExit). Launcher threads are background workers
+            // that the process does not need to keep alive — the home screen will be redrawn
+            // on the next start, so there is nothing to lose by letting them go early.
+            t.setDaemon(true);
             return t;
         }
     }

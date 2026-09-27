@@ -254,7 +254,8 @@ public abstract class WMShellBaseModule {
     static MSDLPlayer provideMSDLPlayer(@Nullable Vibrator vibrator) {
         return MSDLPlayer.Companion.createPlayer(
                 vibrator,
-                Executors.newSingleThreadExecutor(),
+                java.util.concurrent.Executors.newSingleThreadExecutor(
+                        r -> { Thread t = new Thread(r, "msdl-player"); t.setDaemon(true); return t; }),
                 null /* useHapticFeedbackForToken */
         );
     }

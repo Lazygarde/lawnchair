@@ -53,7 +53,7 @@ public class MSDLPlayerWrapper {
             DumpManager dumpManager, DaggerSingletonTracker lifeCycle) {
         Vibrator vibrator = context.getSystemService(Vibrator.class);
         mMSDLPlayer = MSDLPlayer.Companion.createPlayer(vibrator,
-                java.util.concurrent.Executors.newSingleThreadExecutor(),
+                java.util.concurrent.Executors.newSingleThreadExecutor(r -> { Thread t = new Thread(r, "msdl-player"); t.setDaemon(true); return t; }),
                 null /* useHapticFeedbackForToken */);
         lifeCycle.addCloseable(dumpManager.register(this::dump));
     }

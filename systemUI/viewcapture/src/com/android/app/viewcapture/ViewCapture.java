@@ -109,6 +109,7 @@ public abstract class ViewCapture {
 
     public static LooperExecutor createAndStartNewLooperExecutor(String name, int priority) {
         HandlerThread thread = new HandlerThread(name, priority);
+        thread.setDaemon(true); // Do not block JVM shutdown
         thread.start();
         return new LooperExecutor(thread.getLooper());
     }

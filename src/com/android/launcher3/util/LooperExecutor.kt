@@ -112,7 +112,11 @@ class LooperExecutor(looper: Looper, private val defaultPriority: Int) : Abstrac
         fun createAndStartNewLooper(
             name: String,
             priority: Int = Process.THREAD_PRIORITY_DEFAULT,
-        ): Looper = HandlerThread(name, priority).apply { start() }.looper
+        ): Looper = HandlerThread(name, priority).apply {
+            // Daemon so this thread cannot block JVM shutdown (WaitForOtherNonDaemonThreadsToExit).
+            isDaemon = true
+            start()
+        }.looper
 
         const val CALLER_LOADER_TASK = 1 shl 0
         const val CALLER_ICON_CACHE = 1 shl 1

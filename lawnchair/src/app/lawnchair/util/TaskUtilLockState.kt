@@ -11,7 +11,7 @@ import java.util.concurrent.Executors
 
 object TaskUtilLockState {
     private val mLockedApps: MutableList<String> = ArrayList()
-    private val mIoExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    private val mIoExecutor: ExecutorService = Executors.newSingleThreadExecutor { r -> Thread(r, "taskutil-io").also { it.isDaemon = true } }
 
     private const val TAG = "TaskUtilLockState"
     private const val SEPARATOR = "#"

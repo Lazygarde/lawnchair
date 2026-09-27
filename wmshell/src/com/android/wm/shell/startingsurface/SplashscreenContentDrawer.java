@@ -142,6 +142,7 @@ public class SplashscreenContentDrawer {
         //  it easier to test stuff that happens on that thread later.
         final HandlerThread shellSplashscreenWorkerThread =
                 new HandlerThread("wmshell.splashworker", THREAD_PRIORITY_TOP_APP_BOOST);
+        shellSplashscreenWorkerThread.setDaemon(true); // Do not block JVM shutdown
         shellSplashscreenWorkerThread.start();
         mSplashscreenWorkerHandler = shellSplashscreenWorkerThread.getThreadHandler();
         mColorCache = new ColorCache(mContext, mSplashscreenWorkerHandler);

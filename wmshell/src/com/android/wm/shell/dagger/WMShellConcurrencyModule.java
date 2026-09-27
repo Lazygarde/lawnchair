@@ -97,6 +97,7 @@ public abstract class WMShellConcurrencyModule {
      */
     public static HandlerThread createShellMainThread() {
         HandlerThread mainThread = new HandlerThread("wmshell.main", THREAD_PRIORITY_DISPLAY);
+        mainThread.setDaemon(true); // Do not block JVM shutdown
         return mainThread;
     }
 
@@ -176,6 +177,7 @@ public abstract class WMShellConcurrencyModule {
     @ShellAnimationThread
     public static Handler provideShellAnimationHandler() {
         HandlerThread animThread = new HandlerThread("wmshell.anim", THREAD_PRIORITY_DISPLAY);
+        animThread.setDaemon(true); // Do not block JVM shutdown
         animThread.start();
         // LC-Note: Build.IS_DEBUGGABLE, Looper.setTraceTag and
         // Looper.setSlowLogThresholdMs are all non-SDK. Without a hidden-API
@@ -214,6 +216,7 @@ public abstract class WMShellConcurrencyModule {
     public static ShellExecutor provideSplashScreenExecutor() {
         HandlerThread shellSplashscreenThread = new HandlerThread("wmshell.splashscreen",
                 THREAD_PRIORITY_TOP_APP_BOOST);
+        shellSplashscreenThread.setDaemon(true); // Do not block JVM shutdown
         shellSplashscreenThread.start();
         return new HandlerExecutor(shellSplashscreenThread.getThreadHandler());
     }
@@ -227,6 +230,7 @@ public abstract class WMShellConcurrencyModule {
     public static Handler provideDesktopModeMiscHandler() {
         HandlerThread shellDesktopThread = new HandlerThread("wmshell.desktop",
                 THREAD_PRIORITY_TOP_APP_BOOST);
+        shellDesktopThread.setDaemon(true); // Do not block JVM shutdown
         shellDesktopThread.start();
         return shellDesktopThread.getThreadHandler();
     }
@@ -251,6 +255,7 @@ public abstract class WMShellConcurrencyModule {
     public static Handler provideSharedBackgroundHandler() {
         final HandlerThread shellBackgroundThread = new HandlerThread("wmshell.background",
                 THREAD_PRIORITY_BACKGROUND);
+        shellBackgroundThread.setDaemon(true); // Do not block JVM shutdown
         shellBackgroundThread.start();
         return shellBackgroundThread.getThreadHandler();
     }
