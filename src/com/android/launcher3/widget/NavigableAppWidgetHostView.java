@@ -23,7 +23,9 @@ import android.graphics.Rect;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewDebug;
+import android.util.AttributeSet;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 
 import com.android.launcher3.Reorderable;
 import com.android.launcher3.dragndrop.DraggableView;
@@ -211,5 +213,26 @@ public abstract class NavigableAppWidgetHostView extends AppWidgetHostView
         int width = (int) (getMeasuredWidth() * mScaleToFit);
         int height = (int) (getMeasuredHeight() * mScaleToFit);
         bounds.set(0, 0, width, height);
+    }
+
+    @Override
+    public FrameLayout.LayoutParams generateLayoutParams(AttributeSet attrs) {
+        return new FrameLayout.LayoutParams(getContext(), attrs);
+    }
+
+    public FrameLayout.LayoutParams generateLayoutParams(Context context, AttributeSet attrs) {
+        return new FrameLayout.LayoutParams(context, attrs);
+    }
+
+    @Override
+    protected FrameLayout.LayoutParams generateDefaultLayoutParams() {
+        return new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT);
+    }
+
+    @Override
+    protected ViewGroup.LayoutParams generateLayoutParams(ViewGroup.LayoutParams lp) {
+        return new FrameLayout.LayoutParams(lp);
     }
 }

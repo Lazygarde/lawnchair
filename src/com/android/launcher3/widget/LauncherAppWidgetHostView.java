@@ -109,25 +109,34 @@ public class LauncherAppWidgetHostView extends BaseLauncherAppWidgetHostView
     @Override
     public void setColorResources(@Nullable SparseIntArray colors) {
         if (colors == null || colors.size() == 0) {
-            resetColorResources();
+            try {
+                resetColorResources();
+            } catch (Throwable t) {
+                // Ignore if hidden API is blocked on non-system apps
+            }
             return;
         }
 
         // LC-Note: Fix widget idmap theming issue
-        if (Utilities.ATLEAST_U) {
-            // LC-Note: Yes, this exists, don't get fool by your language processor.
-            // Since Android 13 Initial
-            RemoteViews.ColorResources colorResources = RemoteViews.ColorResources.create(getContext(), colors);
-            if (colorResources == null) {
-                resetColorResources();
-                return;
+        try {
+            if (Utilities.ATLEAST_U) {
+                // LC-Note: Yes, this exists, don't get fool by your language processor.
+                // Since Android 13 Initial
+                RemoteViews.ColorResources colorResources = RemoteViews.ColorResources.create(getContext(), colors);
+                if (colorResources == null) {
+                    resetColorResources();
+                    return;
+                }
+                // LC-Note: Yes, this super also exists.
+                // Since Android 14 Initial
+                super.setColorResources(colorResources);
+            } else {
+                // LC-Note: Fall back for Android 12 impl
+                super.setColorResources(colors);
             }
-            // LC-Note: Yes, this super also exists.
-            // Since Android 14 Initial
-            super.setColorResources(colorResources);
-        } else {
-            // LC-Note: Fall back for Android 12 impl
-            super.setColorResources(colors);
+        } catch (Throwable t) {
+            // Hidden API may be blocked on non-system apps (TargetSdkVersion >= 28/34)
+            android.util.Log.w("LauncherAppWidgetHostView", "Failed to set color resources", t);
         }
     }
 
@@ -417,7 +426,13 @@ public class LauncherAppWidgetHostView extends BaseLauncherAppWidgetHostView
 
     @Override
     public void onColorsChanged(SparseIntArray colors) {
-        post(() -> setColorResources(colors));
+        post(() -> {
+            try {
+                setColorResources(colors);
+            } catch (Throwable t) {
+                android.util.Log.w("LauncherAppWidgetHostView", "Failed to apply color resources in onColorsChanged", t);
+            }
+        });
     }
 
     /**
