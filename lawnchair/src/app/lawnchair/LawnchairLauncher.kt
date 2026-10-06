@@ -82,6 +82,8 @@ import com.android.launcher3.views.OptionsPopupView.OptionItem
 import com.android.launcher3.widget.LauncherWidgetHolder
 import com.android.launcher3.widget.RoundedCornerEnforcement
 import com.android.systemui.plugins.shared.LauncherOverlayManager
+import app.lawnchair.overlay.InProcessOverlayManager
+import app.lawnchair.overlay.LawnchairOverlayRegistry
 import com.android.systemui.shared.system.QuickStepContract
 import com.kieronquinn.app.smartspacer.sdk.client.SmartspacerClient
 import com.patrykmichalik.opto.core.onEach
@@ -495,7 +497,15 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
         SmartspacerClient.close()
     }
 
-    override fun getDefaultOverlay(): LauncherOverlayManager = defaultOverlay
+    override fun getDefaultOverlay(): LauncherOverlayManager {
+        val customOverlayEnabled = resources.getBoolean(R.bool.config_enable_custom_overlay)
+        val inProcessProvider = LawnchairOverlayRegistry.getProvider()
+        return if (customOverlayEnabled && inProcessProvider != null) {
+            InProcessOverlayManager(this, inProcessProvider)
+        } else {
+            defaultOverlay
+        }
+    }
 
     fun recreateIfNotScheduled() {
         if (sRestartFlags == 0) {

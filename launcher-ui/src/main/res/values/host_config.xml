@@ -21,4 +21,11 @@
     <!-- Additional package names to exclude from popup menu -->
     <string-array name="config_popup_excluded_packages" translatable="false">
     </string-array>
+
+    <!--
+      Whether to enable host-provided in-process minus-one overlay screen.
+      If true and an overlay provider is registered in LawnchairOverlayRegistry,
+      the custom overlay will take precedence on the minus-one screen.
+    -->
+    <bool name="config_enable_custom_overlay" translatable="false">true</bool>
 </resources>
