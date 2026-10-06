@@ -6,11 +6,10 @@ import android.animation.ValueAnimator
 import android.view.MotionEvent
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
-import androidx.activity.OnBackPressedCallback
 import app.lawnchair.LawnchairLauncher
 import com.android.systemui.plugins.shared.LauncherOverlayManager
+import com.android.systemui.plugins.shared.LauncherOverlayManager.LauncherOverlay
 import com.android.systemui.plugins.shared.LauncherOverlayManager.LauncherOverlayCallbacks
-import com.android.systemui.plugins.shared.LauncherOverlayManager.LauncherOverlayTouchProxy
 
 /**
  * Manages the in-process overlay lifecycle, gesture synchronization with Launcher's Workspace,
@@ -19,7 +18,7 @@ import com.android.systemui.plugins.shared.LauncherOverlayManager.LauncherOverla
 class InProcessOverlayManager(
     private val launcher: LawnchairLauncher,
     private val provider: LawnchairOverlayProvider,
-) : LauncherOverlayManager, LauncherOverlayTouchProxy {
+) : LauncherOverlayManager, LauncherOverlay {
 
     private var overlayContainer: InProcessOverlayContainer? = null
     private var overlayCallbacks: LauncherOverlayCallbacks? = null
@@ -27,17 +26,8 @@ class InProcessOverlayManager(
     private var snapAnimator: ValueAnimator? = null
     private var isDragging: Boolean = false
 
-    private val backPressedCallback = object : OnBackPressedCallback(false) {
-        override fun handleOnBackPressed() {
-            if (currentProgress > 0f) {
-                animateTo(0f, 250)
-            }
-        }
-    }
-
     init {
         setupContainer()
-        launcher.onBackPressedDispatcher.addCallback(launcher, backPressedCallback)
         launcher.setLauncherOverlay(this)
         provider.onAttachedToLauncher(launcher)
     }
@@ -53,7 +43,9 @@ class InProcessOverlayManager(
         }
     }
 
-    override fun setOverlayCallbacks(callbacks: LauncherOverlayCallbacks?) {
+    fun isOverlayOpen(): Boolean = currentProgress > 0.05f
+
+    override fun setOverlayCallbacks(callbacks: LauncherOverlayCallbacks) {
         overlayCallbacks = callbacks
     }
 
@@ -106,7 +98,6 @@ class InProcessOverlayManager(
         overlayContainer?.onScrollProgress(progress)
         provider.onOverlayScroll(progress)
         overlayCallbacks?.onOverlayScrollChanged(progress)
-        backPressedCallback.isEnabled = progress > 0.05f
     }
 
     private fun animateTo(targetProgress: Float, durationMs: Long) {
@@ -144,7 +135,6 @@ class InProcessOverlayManager(
 
     override fun onActivityDestroyed() {
         snapAnimator?.cancel()
-        backPressedCallback.remove()
         launcher.setLauncherOverlay(null)
         overlayContainer?.let { container ->
             val parent = container.parent as? ViewGroup

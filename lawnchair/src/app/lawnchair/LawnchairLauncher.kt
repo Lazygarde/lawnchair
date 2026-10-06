@@ -507,6 +507,15 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
         }
     }
 
+    override fun onBackPressed() {
+        val overlay = mOverlayManager
+        if (overlay is InProcessOverlayManager && overlay.isOverlayOpen()) {
+            overlay.hideOverlay(true)
+            return
+        }
+        super.onBackPressed()
+    }
+
     fun recreateIfNotScheduled() {
         if (sRestartFlags == 0) {
             recreate()
