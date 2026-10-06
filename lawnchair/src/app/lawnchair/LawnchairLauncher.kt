@@ -521,6 +521,17 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
         super.onBackPressed()
     }
 
+    @androidx.annotation.RequiresApi(android.os.Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+    override fun getOnBackAnimationCallback(): android.window.OnBackAnimationCallback {
+        val overlay = mOverlayManager
+        if (overlay is InProcessOverlayManager && overlay.isOverlayOpen()) {
+            return android.window.OnBackAnimationCallback {
+                overlay.hideOverlay(true)
+            }
+        }
+        return super.getOnBackAnimationCallback()
+    }
+
     fun recreateIfNotScheduled() {
         if (sRestartFlags == 0) {
             recreate()

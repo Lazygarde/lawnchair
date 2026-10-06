@@ -7,6 +7,7 @@ import android.view.MotionEvent
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
 import app.lawnchair.LawnchairLauncher
+import com.android.launcher3.InsettableFrameLayout
 import com.android.systemui.plugins.shared.LauncherOverlayManager
 import com.android.systemui.plugins.shared.LauncherOverlayManager.LauncherOverlay
 import com.android.systemui.plugins.shared.LauncherOverlayManager.LauncherOverlayCallbacks
@@ -23,7 +24,8 @@ class InProcessOverlayManager(
 
     private var overlayContainer: InProcessOverlayContainer? = null
     private var overlayCallbacks: LauncherOverlayCallbacks? = null
-    private var currentProgress: Float = 0f
+    var currentProgress: Float = 0f
+        private set
     private var snapAnimator: ValueAnimator? = null
     private var isDragging: Boolean = false
 
@@ -34,13 +36,19 @@ class InProcessOverlayManager(
     }
 
     private fun setupContainer() {
-        val container = InProcessOverlayContainer(launcher, provider)
+        val container = InProcessOverlayContainer(launcher, this, provider)
         overlayContainer = container
 
-        // Add container directly into the content frame behind DragLayer (index 0)
-        val contentParent = launcher.findViewById<ViewGroup>(android.R.id.content)
-        if (contentParent != null) {
-            contentParent.addView(container, 0)
+        // Add container directly into LauncherRootView behind DragLayer (index 0)
+        val rootView = launcher.rootView ?: launcher.window?.decorView?.findViewById<ViewGroup>(android.R.id.content)
+        if (rootView != null) {
+            val lp = InsettableFrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT,
+            ).apply {
+                ignoreInsets = true
+            }
+            rootView.addView(container, 0, lp)
         }
     }
 
@@ -64,7 +72,7 @@ class InProcessOverlayManager(
     override fun onScrollInteractionEnd() {
         isDragging = false
         // Determine whether to snap open or close based on current progress threshold
-        val target = if (currentProgress >= 0.35f) 1f else 0f
+        val target = if (currentProgress >= 0.5f) 1f else 0f
         animateTo(target, 250)
     }
 
@@ -76,7 +84,7 @@ class InProcessOverlayManager(
         } else if (velocity < -400f) {
             0f
         } else {
-            (if (currentProgress >= 0.35f) 1f else 0f)
+            (if (currentProgress >= 0.5f) 1f else 0f)
         }
         val duration = (200 - (Math.abs(velocity) / 20f)).toLong().coerceIn(100L, 250L)
         animateTo(target, duration)
@@ -100,7 +108,7 @@ class InProcessOverlayManager(
         animateTo(0f, duration.toLong().coerceAtLeast(150L))
     }
 
-    private fun applyProgress(progress: Float) {
+    internal fun applyProgress(progress: Float) {
         currentProgress = progress
         overlayContainer?.onScrollProgress(progress)
         provider.onOverlayScroll(progress)

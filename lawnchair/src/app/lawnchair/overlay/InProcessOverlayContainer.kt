@@ -2,23 +2,35 @@ package app.lawnchair.overlay
 
 import android.content.Context
 import android.graphics.Color
+import android.graphics.Rect
+import android.view.MotionEvent
+import android.view.VelocityTracker
 import android.view.View
+import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import androidx.core.view.ViewCompat
-import androidx.core.view.WindowInsetsCompat
+import com.android.launcher3.Insettable
 
 /**
  * Container view holding the host app's custom overlay view.
- * Sits directly behind DragLayer and manages parallax translation and insets.
+ * Sits directly behind DragLayer and manages parallax translation, insets, and swipe-to-close gestures.
  */
 class InProcessOverlayContainer(
     context: Context,
+    private val manager: InProcessOverlayManager,
     private val provider: LawnchairOverlayProvider,
-) : FrameLayout(context) {
+) : FrameLayout(context), Insettable {
 
     private val overlayContentView: View
     private var lastProgress: Float = 0f
+
+    // Touch handling for dragging to close
+    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private var initialTouchX = 0f
+    private var initialTouchY = 0f
+    private var initialProgress = 0f
+    private var isDraggingToClose = false
+    private var velocityTracker: VelocityTracker? = null
 
     init {
         layoutParams = LayoutParams(
@@ -34,13 +46,10 @@ class InProcessOverlayContainer(
             overlayContentView,
             LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT),
         )
+    }
 
-        // Propagate system window insets
-        ViewCompat.setOnApplyWindowInsetsListener(this) { _, insets ->
-            val systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars())
-            setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom)
-            insets
-        }
+    override fun setInsets(insets: Rect) {
+        // Child ComposeView handles statusBarsPadding / navigationBarsPadding
     }
 
     /**
@@ -75,6 +84,100 @@ class InProcessOverlayContainer(
         val width = measuredWidth.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
         val parallaxOffset = (1f - progress) * (width * 0.2f)
         translationX = -parallaxOffset
+    }
+
+    override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
+        if (!manager.isOverlayOpen()) return false
+
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                initialTouchX = ev.rawX
+                initialTouchY = ev.rawY
+                initialProgress = manager.currentProgress
+                isDraggingToClose = false
+                velocityTracker?.recycle()
+                velocityTracker = VelocityTracker.obtain().apply { addMovement(ev) }
+            }
+            MotionEvent.ACTION_MOVE -> {
+                velocityTracker?.addMovement(ev)
+                val dx = ev.rawX - initialTouchX
+                val dy = ev.rawY - initialTouchY
+
+                // Intercept if dragging to the left (dx < -touchSlop) and predominantly horizontal
+                if (!isDraggingToClose && dx < -touchSlop && Math.abs(dx) > Math.abs(dy) * 1.2f) {
+                    isDraggingToClose = true
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                    manager.onScrollInteractionBegin()
+                    return true
+                }
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                isDraggingToClose = false
+                velocityTracker?.recycle()
+                velocityTracker = null
+            }
+        }
+        return isDraggingToClose
+    }
+
+    override fun onTouchEvent(ev: MotionEvent): Boolean {
+        if (!manager.isOverlayOpen() && !isDraggingToClose) return super.onTouchEvent(ev)
+
+        velocityTracker?.addMovement(ev)
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                initialTouchX = ev.rawX
+                initialTouchY = ev.rawY
+                initialProgress = manager.currentProgress
+                return true
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val dx = ev.rawX - initialTouchX
+                val dy = ev.rawY - initialTouchY
+
+                if (!isDraggingToClose && dx < -touchSlop && Math.abs(dx) > Math.abs(dy)) {
+                    isDraggingToClose = true
+                    parent?.requestDisallowInterceptTouchEvent(true)
+                    manager.onScrollInteractionBegin()
+                }
+
+                if (isDraggingToClose) {
+                    val width = measuredWidth.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
+                    val newProgress = (initialProgress + dx / width).coerceIn(0f, 1f)
+                    manager.applyProgress(newProgress)
+                    return true
+                }
+            }
+            MotionEvent.ACTION_UP -> {
+                if (isDraggingToClose) {
+                    isDraggingToClose = false
+                    velocityTracker?.computeCurrentVelocity(1000)
+                    val xVel = velocityTracker?.xVelocity ?: 0f
+                    velocityTracker?.recycle()
+                    velocityTracker = null
+
+                    if (xVel < -400f) {
+                        manager.hideOverlay(200)
+                    } else if (xVel > 400f) {
+                        manager.openOverlay()
+                    } else {
+                        manager.onScrollInteractionEnd()
+                    }
+                    return true
+                }
+                velocityTracker?.recycle()
+                velocityTracker = null
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                if (isDraggingToClose) {
+                    isDraggingToClose = false
+                    manager.onScrollInteractionEnd()
+                }
+                velocityTracker?.recycle()
+                velocityTracker = null
+            }
+        }
+        return super.onTouchEvent(ev)
     }
 
     /**

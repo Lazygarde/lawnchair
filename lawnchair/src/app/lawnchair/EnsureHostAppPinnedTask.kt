@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.pm.LauncherApps
 import android.os.Process
 import android.util.Log
+import app.lawnchair.preferences2.PreferenceManager2
+import app.lawnchair.preferences2.firstCached
 import com.android.launcher3.InvariantDeviceProfile
 import com.android.launcher3.LauncherAppState
 import com.android.launcher3.LauncherModel
@@ -139,6 +141,12 @@ class EnsureHostAppPinnedTask : LauncherModel.ModelUpdateTask {
                     grid.markCells(occupant, false)
                     // Reserve host app cell so occupant won't be moved back to the same spot
                     grid.markCells(targetCellX, targetCellY, 1, 1, true)
+
+                    // On Screen 0, row 0 is reserved for Smartspace if enabled
+                    val smartspaceEnabled = PreferenceManager2.getInstance(context).enableSmartspace.firstCached()
+                    if (smartspaceEnabled && targetScreenId == WorkspaceLayoutManager.FIRST_SCREEN_ID) {
+                        grid.markCells(0, 0, idp.numColumns, 1, true)
+                    }
 
                     val vacant = IntArray(2)
                     if (grid.findVacantCell(vacant, occupant.spanX, occupant.spanY)) {
