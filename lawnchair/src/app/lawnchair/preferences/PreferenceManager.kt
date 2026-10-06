@@ -44,7 +44,7 @@ import javax.inject.Inject
 
 @LauncherAppSingleton
 class PreferenceManager @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @ApplicationContext context: Context,
 ) : BasePreferenceManager(context),
     SafeCloseable {
     private val idp get() = InvariantDeviceProfile.INSTANCE.get(context)
@@ -125,7 +125,7 @@ class PreferenceManager @Inject constructor(
     ) {
         normalizeVibrationFeedbackLevel()
     }
-    val customAppName = object : MutableMapPref<ComponentKey, String>("pref_appNameMap", reloadGrid) {
+    val customAppName = object : MutableMapPref<ComponentKey, String>(this, "pref_appNameMap", reloadGrid) {
         override fun flattenKey(key: ComponentKey) = key.toString()
         override fun unflattenKey(key: String) = ComponentKey.fromString(key)!!
         override fun flattenValue(value: String) = value
