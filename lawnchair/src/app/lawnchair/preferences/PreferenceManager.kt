@@ -20,6 +20,7 @@ import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
 import app.lawnchair.LawnchairLauncher
+import app.lawnchair.RecentsCompat
 import app.lawnchair.font.FontCache
 import app.lawnchair.util.getApkVersionComparison
 import app.lawnchair.util.isGestureNavContractCompatible
@@ -37,7 +38,6 @@ import com.android.launcher3.util.DaggerSingletonObject
 import com.android.launcher3.util.DisplayController
 import com.android.launcher3.util.Executors
 import com.android.launcher3.util.SafeCloseable
-import app.lawnchair.RecentsCompat
 import com.google.android.msdl.data.model.FeedbackLevel
 import com.google.android.msdl.domain.MSDLPlayer
 import javax.inject.Inject

@@ -18,7 +18,8 @@ import com.android.systemui.plugins.shared.LauncherOverlayManager.LauncherOverla
 class InProcessOverlayManager(
     private val launcher: LawnchairLauncher,
     private val provider: LawnchairOverlayProvider,
-) : LauncherOverlayManager, LauncherOverlay {
+) : LauncherOverlayManager,
+    LauncherOverlay {
 
     private var overlayContainer: InProcessOverlayContainer? = null
     private var overlayCallbacks: LauncherOverlayCallbacks? = null
@@ -70,7 +71,13 @@ class InProcessOverlayManager(
     override fun onFlingVelocity(velocity: Float) {
         if (!isDragging) return
         isDragging = false
-        val target = if (velocity > 400f) 1f else if (velocity < -400f) 0f else (if (currentProgress >= 0.35f) 1f else 0f)
+        val target = if (velocity > 400f) {
+            1f
+        } else if (velocity < -400f) {
+            0f
+        } else {
+            (if (currentProgress >= 0.35f) 1f else 0f)
+        }
         val duration = (200 - (Math.abs(velocity) / 20f)).toLong().coerceIn(100L, 250L)
         animateTo(target, duration)
     }

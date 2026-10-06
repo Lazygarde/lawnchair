@@ -40,6 +40,8 @@ import app.lawnchair.gestures.VerticalSwipeTouchController
 import app.lawnchair.gestures.config.GestureHandlerConfig
 import app.lawnchair.gestures.ui.LawnchairShortcutActivity
 import app.lawnchair.nexuslauncher.OverlayCallbackImpl
+import app.lawnchair.overlay.InProcessOverlayManager
+import app.lawnchair.overlay.LawnchairOverlayRegistry
 import app.lawnchair.preferences.PreferenceManager
 import app.lawnchair.preferences2.PreferenceManager2
 import app.lawnchair.preferences2.firstCached
@@ -68,10 +70,10 @@ import com.android.launcher3.shortcuts.DeepShortcutView
 import com.android.launcher3.statemanager.StateManager
 import com.android.launcher3.statemanager.StateManager.StateHandler
 import com.android.launcher3.uioverrides.states.AllAppsState
-
 import com.android.launcher3.uioverrides.states.OverviewState
 import com.android.launcher3.util.ActivityOptionsWrapper
 import com.android.launcher3.util.Executors
+import com.android.launcher3.util.IntSet
 import com.android.launcher3.util.RunnableList
 import com.android.launcher3.util.SystemUiController.UI_STATE_BASE_WINDOW
 import com.android.launcher3.util.Themes
@@ -82,8 +84,6 @@ import com.android.launcher3.views.OptionsPopupView.OptionItem
 import com.android.launcher3.widget.LauncherWidgetHolder
 import com.android.launcher3.widget.RoundedCornerEnforcement
 import com.android.systemui.plugins.shared.LauncherOverlayManager
-import app.lawnchair.overlay.InProcessOverlayManager
-import app.lawnchair.overlay.LawnchairOverlayRegistry
 import com.android.systemui.shared.system.QuickStepContract
 import com.kieronquinn.app.smartspacer.sdk.client.SmartspacerClient
 import com.patrykmichalik.opto.core.onEach
@@ -128,8 +128,8 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
         override fun onStateTransitionStart(toState: LauncherState) {
             when {
                 toState == LauncherState.BACKGROUND_APP ||
-                toState is OverviewState ||
-                toState is AllAppsState -> {
+                    toState is OverviewState ||
+                    toState is AllAppsState -> {
                     LawnchairApp.instance.restoreClockInStatusBar()
                 }
 
@@ -325,6 +325,11 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
             )
         }.toList()
         bindInflatedItems(inflatedItems, if (forceAnimateIcons) AnimatorSet() else null)
+    }
+
+    override fun finishBindingItems(pagesBoundFirst: IntSet?) {
+        super.finishBindingItems(pagesBoundFirst)
+        LauncherAppState.getInstance(this).model.enqueueModelUpdateTask(EnsureHostAppPinnedTask())
     }
 
     override fun onUiChangedWhileSleeping() {
