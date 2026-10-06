@@ -9,6 +9,8 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import com.android.launcher3.Insettable
 
 /**
@@ -16,16 +18,16 @@ import com.android.launcher3.Insettable
  * Sits directly behind DragLayer and manages parallax translation, insets, and swipe-to-close gestures.
  */
 class InProcessOverlayContainer(
-    context: Context,
+    private val launcher: app.lawnchair.LawnchairLauncher,
     private val manager: InProcessOverlayManager,
     private val provider: LawnchairOverlayProvider,
-) : FrameLayout(context), Insettable {
+) : FrameLayout(launcher), Insettable {
 
     private val overlayContentView: View
     private var lastProgress: Float = 0f
 
     // Touch handling for dragging to close
-    private val touchSlop = ViewConfiguration.get(context).scaledTouchSlop
+    private val touchSlop = ViewConfiguration.get(launcher).scaledTouchSlop
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var initialProgress = 0f
@@ -33,6 +35,9 @@ class InProcessOverlayContainer(
     private var velocityTracker: VelocityTracker? = null
 
     init {
+        setViewTreeLifecycleOwner(launcher)
+        setViewTreeSavedStateRegistryOwner(launcher)
+
         layoutParams = LayoutParams(
             LayoutParams.MATCH_PARENT,
             LayoutParams.MATCH_PARENT,
@@ -41,7 +46,7 @@ class InProcessOverlayContainer(
         visibility = GONE
 
         // Create and add the host app's custom view
-        overlayContentView = provider.createOverlayView(context, this)
+        overlayContentView = provider.createOverlayView(launcher, this)
         addView(
             overlayContentView,
             LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT),
@@ -185,5 +190,7 @@ class InProcessOverlayContainer(
      */
     fun onDestroy() {
         removeAllViews()
+        setViewTreeLifecycleOwner(null)
+        setViewTreeSavedStateRegistryOwner(null)
     }
 }

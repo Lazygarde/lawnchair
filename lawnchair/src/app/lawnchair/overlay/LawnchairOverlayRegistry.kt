@@ -73,9 +73,6 @@ object LawnchairOverlayRegistry {
         registerProvider(object : LawnchairOverlayProvider {
             override fun createOverlayView(context: Context, container: ViewGroup): View {
                 return androidx.compose.ui.platform.ComposeView(context).apply {
-                    setViewCompositionStrategy(
-                        androidx.compose.ui.platform.ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed,
-                    )
                     setContent {
                         content()
                     }

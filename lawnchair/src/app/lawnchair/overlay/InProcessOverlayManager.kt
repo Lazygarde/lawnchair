@@ -6,6 +6,8 @@ import android.animation.ValueAnimator
 import android.view.MotionEvent
 import android.view.ViewGroup
 import android.view.animation.DecelerateInterpolator
+import androidx.lifecycle.setViewTreeLifecycleOwner
+import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import app.lawnchair.LawnchairLauncher
 import com.android.launcher3.InsettableFrameLayout
 import com.android.systemui.plugins.shared.LauncherOverlayManager
@@ -36,6 +38,12 @@ class InProcessOverlayManager(
     }
 
     private fun setupContainer() {
+        // Ensure decorView has the updated lifecycle owner if available (e.g. during ActivityRelaunchItem)
+        launcher.window?.decorView?.let { decorView ->
+            decorView.setViewTreeLifecycleOwner(launcher)
+            decorView.setViewTreeSavedStateRegistryOwner(launcher)
+        }
+
         val container = InProcessOverlayContainer(launcher, this, provider)
         overlayContainer = container
 
