@@ -42,6 +42,7 @@ import com.android.launcher3.popup.SystemShortcut
 import com.android.launcher3.util.ApplicationInfoWrapper
 import com.android.launcher3.util.ComponentKey
 import com.android.launcher3.util.PackageManagerHelper
+import com.android.launcher3.util.ShortcutUtil
 import com.android.launcher3.views.ActivityContext
 import com.android.launcher3.views.OptionsPopupView
 import java.net.URISyntaxException
@@ -111,6 +112,9 @@ class LawnchairShortcut {
                     return@Factory null
                 }
                 if (itemInfo.targetComponent == null) {
+                    return@Factory null
+                }
+                if (ShortcutUtil.isExcludedFromPopup(activity.asContext(), itemInfo)) {
                     return@Factory null
                 }
                 if (ApplicationInfoWrapper(

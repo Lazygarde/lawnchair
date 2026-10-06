@@ -1643,6 +1643,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
      * Returns true if the view can show long-press popup
      */
     public boolean canShowLongPressPopup() {
-        return getTag() instanceof ItemInfo && ShortcutUtil.supportsShortcuts((ItemInfo) getTag());
+        return getTag() instanceof ItemInfo
+                && ShortcutUtil.supportsShortcuts((ItemInfo) getTag(), getContext());
     }
 }

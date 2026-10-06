@@ -44,6 +44,7 @@ import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.ItemInfoWithIcon;
 import com.android.launcher3.pm.UserCache;
 import com.android.launcher3.util.ApplicationInfoWrapper;
+import com.android.launcher3.util.ShortcutUtil;
 import com.android.launcher3.widget.LauncherAppWidgetProviderInfo;
 
 import java.net.URISyntaxException;
@@ -196,6 +197,9 @@ public class SecondaryDropTarget extends ButtonDropTarget implements OnAlarmList
      * @return the component name that should be uninstalled or null.
      */
     public static ComponentName getUninstallTarget(Context context, ItemInfo item) {
+        if (context != null && ShortcutUtil.isExcludedFromPopup(context, item)) {
+            return null;
+        }
         Intent intent = null;
         UserHandle user = null;
         if (item != null &&

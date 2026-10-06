@@ -202,7 +202,7 @@ public class SecondaryDragLayer extends BaseDragLayer<SecondaryDisplayLauncher> 
             return false;
         }
         ItemInfo item = (ItemInfo) v.getTag();
-        if (!ShortcutUtil.supportsShortcuts(item)) {
+        if (!ShortcutUtil.supportsShortcuts(item, mContainer)) {
             return false;
         }
         PopupDataProvider popupDataProvider = mContainer.getPopupDataProvider();

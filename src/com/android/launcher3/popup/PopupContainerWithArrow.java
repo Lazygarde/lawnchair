@@ -203,7 +203,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
             return null;
         }
         ItemInfo item = (ItemInfo) icon.getTag();
-        if (!ShortcutUtil.supportsShortcuts(item)) {
+        if (!ShortcutUtil.supportsShortcuts(item, launcher)) {
             return null;
         }
 
@@ -690,7 +690,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
     public static <T extends Context & ActivityContext> void dismissInvalidPopup(T activity) {
         PopupContainerWithArrow popup = getOpen(activity);
         if (popup != null && (!popup.mOriginalIcon.isAttachedToWindow()
-                || !ShortcutUtil.supportsShortcuts((ItemInfo) popup.mOriginalIcon.getTag()))) {
+                || !ShortcutUtil.supportsShortcuts((ItemInfo) popup.mOriginalIcon.getTag(), activity))) {
             popup.animateClose();
         }
     }

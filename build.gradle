@@ -267,6 +267,7 @@ android {
 
         configureEach {
             resValue("string", "launcher_component", "${applicationId}/app.lawnchair.LawnchairLauncher")
+            resValue("bool", "config_exclude_current_app_from_popup", "false")
         }
     }
 

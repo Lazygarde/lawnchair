@@ -23,12 +23,65 @@ import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.model.data.WorkspaceItemInfo;
 import com.android.launcher3.shortcuts.ShortcutKey;
 
+import android.content.Context;
+import android.content.res.Resources;
+import android.text.TextUtils;
+
+import com.android.launcher3.R;
+
 public class ShortcutUtil {
     /**
      * Returns true when we should show shortcut menu for the item.
      */
     public static boolean supportsShortcuts(ItemInfo info) {
         return isActive(info) && (isApp(info) || isPinnedShortcut(info));
+    }
+
+    /**
+     * Returns true when we should show shortcut menu for the item, taking context into account.
+     */
+    public static boolean supportsShortcuts(ItemInfo info, Context context) {
+        if (!supportsShortcuts(info)) {
+            return false;
+        }
+        return context == null || !isExcludedFromPopup(context, info);
+    }
+
+    /**
+     * Returns true if the item belongs to an application excluded from showing popup menus.
+     */
+    public static boolean isExcludedFromPopup(Context context, ItemInfo info) {
+        if (context == null || info == null) {
+            return false;
+        }
+        String targetPackage = info.getTargetPackage();
+        if (TextUtils.isEmpty(targetPackage)) {
+            return false;
+        }
+
+        Resources res = context.getResources();
+        boolean excludeCurrentApp = false;
+        try {
+            excludeCurrentApp = res.getBoolean(R.bool.config_exclude_current_app_from_popup);
+        } catch (Resources.NotFoundException ignored) {
+        }
+        if (excludeCurrentApp && TextUtils.equals(targetPackage, context.getPackageName())) {
+            return true;
+        }
+
+        try {
+            String[] excludedPackages = res.getStringArray(R.array.config_popup_excluded_packages);
+            if (excludedPackages != null) {
+                for (String pkg : excludedPackages) {
+                    if (targetPackage.equals(pkg)) {
+                        return true;
+                    }
+                }
+            }
+        } catch (Resources.NotFoundException ignored) {
+        }
+
+        return false;
     }
 
     /**

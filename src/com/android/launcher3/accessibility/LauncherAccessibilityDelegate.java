@@ -118,7 +118,7 @@ public class LauncherAccessibilityDelegate extends BaseAccessibilityDelegate<Lau
     protected void getSupportedActions(View host, ItemInfo item, List<LauncherAction> out) {
         // If the request came from keyboard, do not add custom shortcuts as that is already
         // exposed as a direct shortcut
-        if (isNotInShortcutMenu(host) && ShortcutUtil.supportsShortcuts(item)) {
+        if (isNotInShortcutMenu(host) && ShortcutUtil.supportsShortcuts(item, host.getContext())) {
             out.add(mActions.get(DEEP_SHORTCUTS));
         }
 

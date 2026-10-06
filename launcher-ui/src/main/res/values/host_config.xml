@@ -12,4 +12,13 @@
 
     <!-- Distribution channel; "play" turns off the in-app updater. -->
     <string name="config_release_channel" translatable="false">play</string>
+    <!--
+      Whether to exclude the current (hosting) app from showing the long-click popup menu.
+      Default is true to prevent users from easily uninstalling or accessing app info of the hosting app.
+    -->
+    <bool name="config_exclude_current_app_from_popup" translatable="false">true</bool>
+
+    <!-- Additional package names to exclude from popup menu -->
+    <string-array name="config_popup_excluded_packages" translatable="false">
+    </string-array>
 </resources>

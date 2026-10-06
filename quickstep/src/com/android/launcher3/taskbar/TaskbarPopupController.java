@@ -146,7 +146,7 @@ public class TaskbarPopupController implements TaskbarControllers.LoggableTaskba
         }
 
         ItemInfo itemInfo = null;
-        if (icon.getTag() instanceof ItemInfo item && ShortcutUtil.supportsShortcuts(item)) {
+        if (icon.getTag() instanceof ItemInfo item && ShortcutUtil.supportsShortcuts(item, icon.getContext())) {
             itemInfo = item;
         } else if (PinToTaskbarShortcut.Companion.isPinningAppWithContextMenuEnabled(mContext)
                 && icon.getTag() instanceof SingleTask task) {
