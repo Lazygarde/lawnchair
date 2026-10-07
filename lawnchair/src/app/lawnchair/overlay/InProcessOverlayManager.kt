@@ -78,21 +78,22 @@ class InProcessOverlayManager(
     }
 
     override fun onScrollInteractionEnd() {
+        if (!isDragging) return
         isDragging = false
         // Determine whether to snap open or close based on current progress threshold
-        val target = if (currentProgress >= 0.5f) 1f else 0f
+        val target = if (currentProgress >= 0.25f) 1f else 0f
         animateTo(target, 250)
     }
 
     override fun onFlingVelocity(velocity: Float) {
         if (!isDragging) return
         isDragging = false
-        val target = if (velocity > 400f) {
+        val target = if (velocity > 200f) {
             1f
-        } else if (velocity < -400f) {
+        } else if (velocity < -200f) {
             0f
         } else {
-            (if (currentProgress >= 0.5f) 1f else 0f)
+            (if (currentProgress >= 0.25f) 1f else 0f)
         }
         val duration = (200 - (Math.abs(velocity) / 20f)).toLong().coerceIn(100L, 250L)
         animateTo(target, duration)

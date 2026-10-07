@@ -29,6 +29,7 @@ class InProcessOverlayContainer(
 
     // Touch handling for dragging to close
     private val touchSlop = ViewConfiguration.get(launcher).scaledTouchSlop
+    private val dragCloseThreshold = touchSlop * 2.5f
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var initialProgress = 0f
@@ -111,7 +112,7 @@ class InProcessOverlayContainer(
                 val dy = ev.rawY - initialTouchY
 
                 // Intercept if dragging to the left (dx < -touchSlop) and predominantly horizontal
-                if (!isDraggingToClose && dx < -touchSlop && Math.abs(dx) > Math.abs(dy) * 1.2f) {
+                if (!isDraggingToClose && dx < -dragCloseThreshold && Math.abs(dx) > Math.abs(dy) * 1.5f) {
                     isDraggingToClose = true
                     parent?.requestDisallowInterceptTouchEvent(true)
                     manager.onScrollInteractionBegin()
@@ -144,7 +145,7 @@ class InProcessOverlayContainer(
                 val dx = ev.rawX - initialTouchX
                 val dy = ev.rawY - initialTouchY
 
-                if (!isDraggingToClose && dx < -touchSlop && Math.abs(dx) > Math.abs(dy)) {
+                if (!isDraggingToClose && dx < -dragCloseThreshold && Math.abs(dx) > Math.abs(dy) * 1.5f) {
                     isDraggingToClose = true
                     parent?.requestDisallowInterceptTouchEvent(true)
                     manager.onScrollInteractionBegin()
@@ -166,12 +167,16 @@ class InProcessOverlayContainer(
                     velocityTracker?.recycle()
                     velocityTracker = null
 
-                    if (xVel < -400f) {
+                    val width = measuredWidth.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
+                    val dx = ev.rawX - initialTouchX
+                    val dragRatio = (-dx / width).coerceIn(0f, 1f)
+
+                    if (xVel < -200f || dragRatio >= 0.2f) {
                         manager.hideOverlay(200)
-                    } else if (xVel > 400f) {
+                    } else if (xVel > 200f) {
                         manager.openOverlay()
                     } else {
-                        manager.onScrollInteractionEnd()
+                        manager.openOverlay()
                     }
                     return true
                 }
@@ -182,7 +187,7 @@ class InProcessOverlayContainer(
             MotionEvent.ACTION_CANCEL -> {
                 if (isDraggingToClose) {
                     isDraggingToClose = false
-                    manager.onScrollInteractionEnd()
+                    manager.openOverlay()
                 }
                 velocityTracker?.recycle()
                 velocityTracker = null
