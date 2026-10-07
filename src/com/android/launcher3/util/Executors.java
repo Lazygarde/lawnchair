@@ -46,7 +46,8 @@ public class Executors {
      * An {@link ThreadPoolExecutor} to be used with async task with no limit on the queue size.
      */
     public static final ThreadPoolExecutor THREAD_POOL_EXECUTOR = new ThreadPoolExecutor(
-            POOL_SIZE, POOL_SIZE, KEEP_ALIVE, TimeUnit.SECONDS, new LinkedBlockingQueue<>());
+            POOL_SIZE, POOL_SIZE, KEEP_ALIVE, TimeUnit.SECONDS, new LinkedBlockingQueue<>(),
+            new SimpleThreadFactory("launcher-pool", THREAD_PRIORITY_BACKGROUND));
 
     /**
      * An {@link LooperExecutor} to be used with async task where order is important.

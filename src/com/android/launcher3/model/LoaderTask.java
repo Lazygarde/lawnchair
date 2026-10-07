@@ -46,6 +46,7 @@ import android.content.pm.PackageInstaller.SessionInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ShortcutInfo;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.os.Trace;
 import android.os.UserHandle;
 import android.os.UserManager;
@@ -212,13 +213,18 @@ public class LoaderTask implements Runnable {
     }
 
     protected synchronized void waitForIdle() {
-        // Wait until the either we're stopped or the other threads are done.
+        // Wait until either we're stopped or the other threads are done.
         // This way we don't start loading all apps until the workspace has settled
-        // down.
+        // down, but bound the total wait so we never deadlock or busy-loop indefinitely
+        // if the UI looper is blocked, dead, or shutting down.
         LooperIdleLock idleLock = mLauncherBinder.newIdleLock(this);
-        // Just in case mFlushingWorkerThread changes but we aren't woken up,
-        // wait no longer than 1sec at a time
-        while (!mStopped && idleLock.awaitLocked(1000));
+        long endTime = SystemClock.uptimeMillis() + 2000;
+        while (!mStopped && idleLock.awaitLocked(1000)) {
+            if (SystemClock.uptimeMillis() >= endTime) {
+                idleLock.destroy();
+                break;
+            }
+        }
     }
 
     private synchronized void verifyNotStopped() throws CancellationException {

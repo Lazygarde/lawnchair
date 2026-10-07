@@ -89,7 +89,10 @@ abstract class SystemUnfoldSharedModule {
         @Singleton
         fun provideBgLooper(): Looper {
             return HandlerThread("UnfoldBg", Process.THREAD_PRIORITY_FOREGROUND)
-                .apply { start() }
+                .apply {
+                    isDaemon = true
+                    start()
+                }
                 .looper
         }
 

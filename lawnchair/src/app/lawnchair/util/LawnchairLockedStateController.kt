@@ -23,7 +23,9 @@ object LawnchairLockedStateController {
 
     private lateinit var applicationContext: Context
     private val backgroundThread: HandlerThread by lazy {
-        HandlerThread("Recents-LawnchairLockedStateController", 10)
+        HandlerThread("Recents-LawnchairLockedStateController", 10).apply {
+            isDaemon = true
+        }
     }
     private val backgroundThreadHandler: Handler by lazy {
         Handler(backgroundThread.looper)

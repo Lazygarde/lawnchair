@@ -46,6 +46,7 @@ object LauncherConcurrencyModule {
     @Background
     fun provideBgLooper(): Looper {
         val thread = HandlerThread("LauncherBg", Process.THREAD_PRIORITY_BACKGROUND)
+        thread.isDaemon = true
         thread.start()
         // LC-Note: Looper.setSlowLogThresholdMs is non-SDK, so without a hidden-API exemption it
         // throws NoSuchMethodError -- an Error, not an Exception. This provider sits at the root

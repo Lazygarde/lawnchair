@@ -33,30 +33,59 @@ public class LooperIdleLock implements MessageQueue.IdleHandler {
         mLock = lock;
         mLooper = looper;
         mIsLocked = true;
-        looper.getQueue().addIdleHandler(this);
+        try {
+            looper.getQueue().addIdleHandler(this);
+        } catch (Throwable t) {
+            mIsLocked = false;
+        }
     }
 
     @Override
     public boolean queueIdle() {
         synchronized (mLock) {
             mIsLocked = false;
-            mLock.notify();
+            mLock.notifyAll();
         }
         // Manually remove from the list in case we're calling this outside of the idle callbacks
         // (this is Ok in the normal flow as well because MessageQueue makes a copy of all handlers
         // before calling back)
-        mLooper.getQueue().removeIdleHandler(this);
+        try {
+            mLooper.getQueue().removeIdleHandler(this);
+        } catch (Throwable ignored) {
+        }
         return false;
+    }
+
+    /**
+     * Unlocks and cleans up the idle handler to avoid hanging worker threads.
+     */
+    public void destroy() {
+        synchronized (mLock) {
+            mIsLocked = false;
+            mLock.notifyAll();
+        }
+        try {
+            mLooper.getQueue().removeIdleHandler(this);
+        } catch (Throwable ignored) {
+        }
     }
 
     public boolean awaitLocked(long ms) {
         if (mIsLocked) {
+            if (!mLooper.getThread().isAlive()) {
+                destroy();
+                return false;
+            }
             try {
                 // Just in case mFlushingWorkerThread changes but we aren't woken up,
                 // wait no longer than 1sec at a time
                 mLock.wait(ms);
             } catch (InterruptedException ex) {
                 // Ignore
+            }
+            if (!mLooper.getThread().isAlive()) {
+                destroy();
+                return false;
             }
         }
         return mIsLocked;
