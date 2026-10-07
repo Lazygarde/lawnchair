@@ -43,7 +43,9 @@ jobs:
           echo "Publishing version $version"
 
       - name: Publish to GitHub Packages
-        run: ./gradlew publishAllPublicationsToGitHubPackagesRepository
+        run: |
+          ./gradlew publishAllPublicationsToGitHubPackagesRepository --no-parallel --stacktrace || \
+          (echo "First attempt failed, retrying in 10 seconds..." && sleep 10 && ./gradlew publishAllPublicationsToGitHubPackagesRepository --no-parallel --stacktrace)
         env:
           PUBLISH_VERSION: ${{ steps.version.outputs.value }}
           GITHUB_ACTOR: ${{ github.actor }}

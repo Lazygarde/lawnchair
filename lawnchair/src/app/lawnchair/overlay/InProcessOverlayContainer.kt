@@ -21,7 +21,8 @@ class InProcessOverlayContainer(
     private val launcher: app.lawnchair.LawnchairLauncher,
     private val manager: InProcessOverlayManager,
     private val provider: LawnchairOverlayProvider,
-) : FrameLayout(launcher), Insettable {
+) : FrameLayout(launcher),
+    Insettable {
 
     private val overlayContentView: View
     private var lastProgress: Float = 0f
@@ -103,6 +104,7 @@ class InProcessOverlayContainer(
                 velocityTracker?.recycle()
                 velocityTracker = VelocityTracker.obtain().apply { addMovement(ev) }
             }
+
             MotionEvent.ACTION_MOVE -> {
                 velocityTracker?.addMovement(ev)
                 val dx = ev.rawX - initialTouchX
@@ -116,6 +118,7 @@ class InProcessOverlayContainer(
                     return true
                 }
             }
+
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
                 isDraggingToClose = false
                 velocityTracker?.recycle()
@@ -136,6 +139,7 @@ class InProcessOverlayContainer(
                 initialProgress = manager.currentProgress
                 return true
             }
+
             MotionEvent.ACTION_MOVE -> {
                 val dx = ev.rawX - initialTouchX
                 val dy = ev.rawY - initialTouchY
@@ -153,6 +157,7 @@ class InProcessOverlayContainer(
                     return true
                 }
             }
+
             MotionEvent.ACTION_UP -> {
                 if (isDraggingToClose) {
                     isDraggingToClose = false
@@ -173,6 +178,7 @@ class InProcessOverlayContainer(
                 velocityTracker?.recycle()
                 velocityTracker = null
             }
+
             MotionEvent.ACTION_CANCEL -> {
                 if (isDraggingToClose) {
                     isDraggingToClose = false
