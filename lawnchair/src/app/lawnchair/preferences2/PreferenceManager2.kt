@@ -755,7 +755,7 @@ class PreferenceManager2 @Inject constructor(
 
     val smartspaceOnboarding = preference(
         key = booleanPreferencesKey("enable_smartspace_onboarding"),
-        defaultValue = true,
+        defaultValue = false,
     )
 
     val smartspaceShowDate = preference(
