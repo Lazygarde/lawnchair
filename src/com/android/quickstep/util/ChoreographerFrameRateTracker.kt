@@ -16,6 +16,7 @@
 
 package com.android.quickstep.util
 
+import android.os.Looper
 import android.util.TimeUtils
 import android.view.Choreographer
 import com.android.launcher3.util.window.RefreshRateTracker
@@ -23,14 +24,18 @@ import com.android.launcher3.util.window.RefreshRateTracker
 /** [RefreshRateTracker] using main thread [Choreographer] */
 object ChoreographerFrameRateTracker : RefreshRateTracker {
 
-    // LC-Note: Ignore? Why is it complaining about inapplicable candidate when you compile just fine?
     override val singleFrameMs: Int
         get() =
             try {
-                Choreographer.getMainThreadInstance()?.let {
+                val choreographer = if (Looper.myLooper() != null) {
+                    Choreographer.getInstance()
+                } else {
+                    null
+                }
+                choreographer?.let {
                     (it.frameIntervalNanos / TimeUtils.NANOS_PER_MS).toInt().coerceAtLeast(1)
-                } ?: 1
-            } catch (_: NoSuchMethodError) {
+                } ?: 16
+            } catch (_: Throwable) {
                 16
             }
 }

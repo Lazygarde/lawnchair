@@ -525,8 +525,10 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
     override fun getOnBackAnimationCallback(): android.window.OnBackAnimationCallback {
         val overlay = mOverlayManager
         if (overlay is InProcessOverlayManager && overlay.isOverlayOpen()) {
-            return android.window.OnBackAnimationCallback {
-                overlay.hideOverlay(true)
+            return object : android.window.OnBackAnimationCallback {
+                override fun onBackInvoked() {
+                    overlay.hideOverlay(true)
+                }
             }
         }
         return super.getOnBackAnimationCallback()
