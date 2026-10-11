@@ -1068,47 +1068,57 @@ public class QuickstepLauncher extends Launcher implements RecentsViewContainer,
     
                         @Override
                         public void onBackStartedCompat(@NonNull BackEvent backEvent) {
-                            if (mActiveOnBackAnimationCallback != null) {
-                                mActiveOnBackAnimationCallback.onBackCancelled();
+                            try {
+                                if (mActiveOnBackAnimationCallback != null) {
+                                    mActiveOnBackAnimationCallback.onBackCancelled();
+                                }
+                                mActiveOnBackAnimationCallback = getOnBackAnimationCallback();
+                                mActiveOnBackAnimationCallback.onBackStarted(backEvent);
+                            } catch (Throwable t) {
+                                android.util.Log.e("QuickstepLauncher", "Error in onBackStarted", t);
                             }
-                            mActiveOnBackAnimationCallback = getOnBackAnimationCallback();
-                            mActiveOnBackAnimationCallback.onBackStarted(backEvent);
                         }
 
                         @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
                         @Override
                         public void onBackInvokedCompat() {
-                            // Recreate mActiveOnBackAnimationCallback if necessary to avoid NPE
-                            // because:
-                            // 1. b/260636433: In 3-button-navigation mode, onBackStarted() is not
-                            // called on ACTION_DOWN before onBackInvoked() is called in ACTION_UP.
-                            // 2. Launcher#onBackPressed() will call onBackInvoked() without calling
-                            // onBackInvoked() beforehand.
-                            if (mActiveOnBackAnimationCallback == null) {
-                                mActiveOnBackAnimationCallback = getOnBackAnimationCallback();
+                            try {
+                                if (mActiveOnBackAnimationCallback == null) {
+                                    mActiveOnBackAnimationCallback = getOnBackAnimationCallback();
+                                }
+                                mActiveOnBackAnimationCallback.onBackInvoked();
+                            } catch (Throwable t) {
+                                android.util.Log.e("QuickstepLauncher", "Error in onBackInvoked", t);
+                            } finally {
+                                mActiveOnBackAnimationCallback = null;
                             }
-                            mActiveOnBackAnimationCallback.onBackInvoked();
-                            mActiveOnBackAnimationCallback = null;
                             TestLogging.recordEvent(TestProtocol.SEQUENCE_MAIN, "onBackInvoked");
                         }
 
                         @Override
                         public void onBackProgressedCompat(@NonNull BackEvent backEvent) {
-                            if (!FeatureFlags.IS_STUDIO_BUILD
-                                    && mActiveOnBackAnimationCallback == null) {
+                            if (mActiveOnBackAnimationCallback == null) {
                                 return;
                             }
-                            mActiveOnBackAnimationCallback.onBackProgressed(backEvent);
+                            try {
+                                mActiveOnBackAnimationCallback.onBackProgressed(backEvent);
+                            } catch (Throwable t) {
+                                android.util.Log.e("QuickstepLauncher", "Error in onBackProgressed", t);
+                            }
                         }
 
                         @Override
                         public void onBackCancelledCompat() {
-                            if (!FeatureFlags.IS_STUDIO_BUILD
-                                    && mActiveOnBackAnimationCallback == null) {
+                            if (mActiveOnBackAnimationCallback == null) {
                                 return;
                             }
-                            mActiveOnBackAnimationCallback.onBackCancelled();
-                            mActiveOnBackAnimationCallback = null;
+                            try {
+                                mActiveOnBackAnimationCallback.onBackCancelled();
+                            } catch (Throwable t) {
+                                android.util.Log.e("QuickstepLauncher", "Error in onBackCancelled", t);
+                            } finally {
+                                mActiveOnBackAnimationCallback = null;
+                            }
                         }
                     });
         } else if (Utilities.ATLEAST_T) {
