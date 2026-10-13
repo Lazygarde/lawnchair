@@ -54,8 +54,9 @@ public abstract class BlurUtils {
                     && ActivityManager.isHighEndGfx()
                     && !SystemProperties.getBoolean("persist.sysui.disableBlur", false);
         } catch (Throwable t) {
-            Log.w(TAG, "Cannot determine cross-window blur support, assuming unsupported", t);
-            return false;
+            // In host apps where hidden APIs (CrossWindowBlurListeners, SystemProperties)
+            // are denied by runtime, assume supported on S+ (Android 12+)
+            return true;
         }
     }
 }

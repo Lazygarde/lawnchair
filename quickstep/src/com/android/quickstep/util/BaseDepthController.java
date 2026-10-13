@@ -130,11 +130,15 @@ public class BaseDepthController {
         if (Flags.allAppsBlur() || enableOverviewBackgroundWallpaperBlur()) {
             if (Utilities.ATLEAST_S) {
                 try {
-                    mCrossWindowBlursEnabled =
-                            CrossWindowBlurListeners.getInstance().isCrossWindowBlurEnabled();
+                    android.view.WindowManager wm = activity.getSystemService(android.view.WindowManager.class);
+                    mCrossWindowBlursEnabled = wm != null && wm.isCrossWindowBlurEnabled();
                 } catch (Throwable t) {
-                    // LC-Ignored
-                    mCrossWindowBlursEnabled = false;
+                    try {
+                        mCrossWindowBlursEnabled =
+                                CrossWindowBlurListeners.getInstance().isCrossWindowBlurEnabled();
+                    } catch (Throwable t2) {
+                        mCrossWindowBlursEnabled = true;
+                    }
                 }
             } else {
                 mCrossWindowBlursEnabled = false;
@@ -246,6 +250,13 @@ public class BaseDepthController {
         if (!skipUpdate) {
             mCurrentBlur = newBlur;
             blurWorkspaceDepthTargets();
+            if (Utilities.ATLEAST_S) {
+                try {
+                    mLauncher.getWindow().setBackgroundBlurRadius(newBlur);
+                } catch (Throwable t) {
+                    // LC-Ignored
+                }
+            }
         }
 
         if (!BlurUtils.supportsBlursOnWindows()) {

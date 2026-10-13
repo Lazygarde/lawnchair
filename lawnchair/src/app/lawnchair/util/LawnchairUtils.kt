@@ -23,6 +23,7 @@ import android.app.PendingIntent.FLAG_CANCEL_CURRENT
 import android.app.PendingIntent.FLAG_IMMUTABLE
 import android.content.ContentResolver
 import android.content.Context
+import android.graphics.Color
 import android.content.Intent
 import android.content.pm.PackageInfo.REQUESTED_PERMISSION_GRANTED
 import android.content.pm.PackageManager
@@ -225,15 +226,17 @@ private fun getAllAppsBaseColor(context: Context, defaultColor: Int): Int {
     val prefs2 = PreferenceManager2.getInstance(context)
     val colorOptions: ColorOption = prefs2.appDrawerBackgroundColor.firstCached()
     val color = colorOptions.colorPreferenceEntry.lightColor.invoke(context)
-    val baseColor = if (color != 0) color else defaultColor
-    return ColorUtils.setAlphaComponent(baseColor, 255)
+    return if (color != 0) color else defaultColor
 }
 
 /** Apply Lawnchair custom allapps opacity and colour to the provided colour */
 fun getAllAppsBackgroundColor(context: Context, defaultColor: Int): Int {
     val prefs = PreferenceManager.getInstance(context)
     val userOpacity = prefs.drawerOpacity.get()
-    return ColorUtils.setAlphaComponent(getAllAppsBaseColor(context, defaultColor), (userOpacity * 255).roundToInt())
+    val baseColor = getAllAppsBaseColor(context, defaultColor)
+    val baseAlpha = Color.alpha(baseColor)
+    val finalAlpha = (userOpacity * baseAlpha).roundToInt()
+    return ColorUtils.setAlphaComponent(baseColor, finalAlpha)
 }
 
 fun Context.checkPackagePermission(packageName: String, permissionName: String): Boolean {

@@ -18,15 +18,20 @@ package app.lawnchair
 
 import android.animation.AnimatorSet
 import android.app.ActivityOptions
+import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.RenderEffect
 import android.graphics.RectF
+import android.graphics.Shader
 import android.graphics.drawable.Drawable
 import android.os.Bundle
 import android.util.Pair
 import android.view.Display
+import android.view.SurfaceControl
 import android.view.View
 import android.view.ViewTreeObserver
+import android.view.WindowManager
 import android.window.SplashScreen
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -54,6 +59,7 @@ import app.lawnchair.util.getThemedIconPacksInstalled
 import app.lawnchair.util.unsafeLazy
 import com.android.launcher3.BaseActivity
 import com.android.launcher3.BubbleTextView
+import com.android.launcher3.Flags
 import com.android.launcher3.LauncherAppState
 import com.android.launcher3.LauncherHost
 import com.android.launcher3.LauncherSettings.Favorites.CONTAINER_ALL_APPS_PREDICTION
@@ -165,6 +171,9 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
             defaultOverlay.setEnableFeed(enable)
         }.launchIn(scope = lifecycleScope)
         launcher.stateManager.addStateListener(clearSearchStateListener)
+        workspace?.addOverlayCallback { progress ->
+            updateBlurOnOverlayScroll(progress)
+        }
 
         if (prefs.autoLaunchRoot.get()) {
             lifecycleScope.launch {
@@ -466,6 +475,11 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
         return super.startActivitySafely(v, intent, item)
     }
 
+    private var baseSurface: SurfaceControl? = null
+    private var currentBlurRadius = -1
+    private var allAppsProgress = 0f
+    private var overlayProgress = 0f
+
     override fun onResume() {
         super.onResume()
         restartIfPending()
@@ -483,17 +497,168 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
 
                     dragLayer.post {
                         dragLayer.viewTreeObserver.removeOnDrawListener(this)
+                        updateSurfaceControl()
                         // Drop stuck All Apps RenderEffect on icons after returning home.
                         clearStuckBlurOnResumeIfHome()
+                        if (stateManager.state == LauncherState.NORMAL && overlayProgress <= 0.05f) {
+                            allAppsProgress = 0f
+                            updateCombinedBlur()
+                        }
                     }
                 }
             },
         )
     }
 
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        dragLayer.post {
+            updateSurfaceControl()
+        }
+    }
+
+    override fun onPause() {
+        super.onPause()
+        if (stateManager.state != LauncherState.ALL_APPS && overlayProgress <= 0.05f) {
+            allAppsProgress = 0f
+            overlayProgress = 0f
+            updateCombinedBlur()
+        }
+    }
+
+    override fun onAllAppsTransition(progress: Float) {
+        super.onAllAppsTransition(progress)
+        allAppsProgress = progress.coerceIn(0f, 1f)
+        updateCombinedBlur()
+    }
+
+    fun updateBlurOnOverlayScroll(progress: Float) {
+        overlayProgress = progress.coerceIn(0f, 1f)
+        updateCombinedBlur()
+    }
+
     override fun onStateSetEnd(state: LauncherState) {
         super.onStateSetEnd(state)
         refreshPredictionContainersFromModel()
+        if (state == LauncherState.NORMAL) {
+            allAppsProgress = 0f
+            updateCombinedBlur()
+        } else if (state == LauncherState.ALL_APPS) {
+            allAppsProgress = 1f
+            updateCombinedBlur()
+        }
+    }
+
+    override fun clearStuckBlurOnResumeIfHome() {
+        super.clearStuckBlurOnResumeIfHome()
+        if (Utilities.ATLEAST_S && stateManager.state == LauncherState.NORMAL && !stateManager.isInTransition && overlayProgress <= 0.05f) {
+            try {
+                depthBlurTargets.forEach { it.setRenderEffect(null) }
+                allAppsProgress = 0f
+                overlayProgress = 0f
+                currentBlurRadius = -1
+                updateCombinedBlur()
+            } catch (_: Throwable) {
+            }
+        }
+    }
+
+    override fun isAllAppsBackgroundBlurEnabled(): Boolean {
+        return Utilities.ATLEAST_S && Flags.allAppsBlur()
+    }
+
+    private fun updateSurfaceControl() {
+        try {
+            if (Utilities.ATLEAST_Q) {
+                val sc = dragLayer.viewRootImpl?.surfaceControl
+                if (sc != null && sc.isValid) {
+                    baseSurface = sc
+                }
+            }
+        } catch (_: Throwable) {
+        }
+    }
+
+    private fun getBaseSurface(): SurfaceControl? {
+        val cached = baseSurface
+        if (cached != null && cached.isValid) {
+            return cached
+        }
+        updateSurfaceControl()
+        return baseSurface?.takeIf { it.isValid }
+    }
+
+    private fun updateCombinedBlur() {
+        if (!Utilities.ATLEAST_S) return
+        val maxBlur = resources.getDimensionPixelSize(R.dimen.max_depth_blur_radius_enhanced)
+
+        // For All Apps: up to 100% maxBlur
+        // For Minus-One overlay: around 60% of maxBlur ("blur thêm 1 chút")
+        val allAppsBlur = allAppsProgress * maxBlur
+        val overlayMaxBlur = maxBlur * 0.6f
+        val overlayBlur = overlayProgress * overlayMaxBlur
+
+        val targetBlur = maxOf(allAppsBlur, overlayBlur).toInt()
+        val minDelta = Utilities.dpToPx(2f).toInt()
+        if (currentBlurRadius != -1 && targetBlur != 0 && targetBlur != maxBlur &&
+            kotlin.math.abs(targetBlur - currentBlurRadius) < minDelta
+        ) {
+            return
+        }
+        if (currentBlurRadius == targetBlur) return
+        currentBlurRadius = targetBlur
+
+        // 1. Window background blur (Public official Android 12+ S SDK API)
+        try {
+            window?.setBackgroundBlurRadius(targetBlur)
+        } catch (_: Throwable) {
+        }
+
+        // 2. SurfaceControl background blur fallback (wallpaper layer blur in SurfaceFlinger)
+        try {
+            val surface = getBaseSurface()
+            if (surface != null && surface.isValid) {
+                val transaction = SurfaceControl.Transaction()
+                transaction.setBackgroundBlurRadius(surface, targetBlur)
+                val isOpaque = targetBlur == 0 && (scrimView?.isFullyOpaque == true)
+                transaction.setOpaque(surface, isOpaque)
+                transaction.apply()
+            }
+        } catch (_: Throwable) {
+        }
+
+        // 2. Wallpaper depth zoom-out (Android 11+)
+        if (Utilities.ATLEAST_R) {
+            try {
+                val windowToken = rootView?.windowToken
+                if (windowToken != null) {
+                    val wallpaperManager = getSystemService(WallpaperManager::class.java)
+                    val depthFactor = if (allAppsProgress > 0f) {
+                        allAppsProgress / 3f
+                    } else {
+                        (overlayProgress / 3f) * 0.6f
+                    }
+                    wallpaperManager?.setWallpaperZoomOut(windowToken, depthFactor.coerceIn(0f, 1f))
+                }
+            } catch (_: Throwable) {
+            }
+        }
+
+        // 3. RenderEffect on Workspace and Hotseat targets (Android 12+)
+        try {
+            val blurTargets = depthBlurTargets
+            if (targetBlur > 0) {
+                val blurEffect = RenderEffect.createBlurEffect(
+                    targetBlur.toFloat(),
+                    targetBlur.toFloat(),
+                    Shader.TileMode.DECAL,
+                )
+                blurTargets.forEach { it.setRenderEffect(blurEffect) }
+            } else {
+                blurTargets.forEach { it.setRenderEffect(null) }
+            }
+        } catch (_: Throwable) {
+        }
     }
 
     override fun onDestroy() {

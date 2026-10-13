@@ -29,6 +29,8 @@ import com.android.launcher3.uioverrides.QuickstepLauncher
  */
 open class LawnchairLauncherBase : QuickstepLauncher() {
 
+    open val hasDepthController: Boolean get() = depthController != null
+
     open fun clearStuckBlurOnResumeIfHome() {
         depthController?.clearStuckBlurOnResumeIfHome()
     }

@@ -115,6 +115,15 @@ public class DepthController extends BaseDepthController implements StateHandler
                     // the UI helper thread, where nothing would catch it.
                     UI_HELPER_EXECUTOR.execute(() -> {
                         try {
+                            android.view.WindowManager wm = mLauncher.getSystemService(android.view.WindowManager.class);
+                            if (wm != null) {
+                                wm.addCrossWindowBlurEnabledListener(
+                                        mLauncher.getMainExecutor(), mCrossWindowBlurListener);
+                                return;
+                            }
+                        } catch (Throwable ignored) {
+                        }
+                        try {
                             CrossWindowBlurListeners.getInstance().addListener(
                                     mLauncher.getMainExecutor(), mCrossWindowBlurListener);
                         } catch (Throwable t) {
@@ -155,6 +164,14 @@ public class DepthController extends BaseDepthController implements StateHandler
         if (Utilities.ATLEAST_S) {
             // LC-Note: guard inside the lambda -- see addListener above.
             UI_HELPER_EXECUTOR.execute(() -> {
+                try {
+                    android.view.WindowManager wm = mLauncher.getSystemService(android.view.WindowManager.class);
+                    if (wm != null) {
+                        wm.removeCrossWindowBlurEnabledListener(mCrossWindowBlurListener);
+                        return;
+                    }
+                } catch (Throwable ignored) {
+                }
                 try {
                     CrossWindowBlurListeners.getInstance()
                             .removeListener(mCrossWindowBlurListener);

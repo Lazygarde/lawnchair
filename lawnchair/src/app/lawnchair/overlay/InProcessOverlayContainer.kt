@@ -9,8 +9,10 @@ import android.view.View
 import android.view.ViewConfiguration
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import androidx.core.graphics.ColorUtils
 import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
+import app.lawnchair.theme.color.tokens.ColorTokens
 import com.android.launcher3.Insettable
 
 /**
@@ -78,6 +80,7 @@ class InProcessOverlayContainer(
                 visibility = GONE
             }
             alpha = 0f
+            setBackgroundColor(Color.TRANSPARENT)
             return
         }
 
@@ -86,6 +89,13 @@ class InProcessOverlayContainer(
         }
 
         alpha = progress
+
+        try {
+            val baseColor = ColorTokens.ColorBackground.resolveColor(context)
+            val scrimAlpha = (progress.coerceIn(0f, 1f) * 0.35f * 255).toInt()
+            setBackgroundColor(ColorUtils.setAlphaComponent(baseColor, scrimAlpha))
+        } catch (_: Throwable) {
+        }
 
         // Subtle parallax slide-in from the left
         val width = measuredWidth.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels

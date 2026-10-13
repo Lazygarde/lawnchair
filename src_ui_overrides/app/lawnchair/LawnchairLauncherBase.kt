@@ -24,6 +24,8 @@ import com.android.launcher3.Launcher
  * All 14 methods overridden by LawnchairLauncher exist on core Launcher / BaseActivity.
  */
 open class LawnchairLauncherBase : Launcher() {
+    open val hasDepthController: Boolean get() = false
+
     open fun clearStuckBlurOnResumeIfHome() {
         // No-op in withoutQuickstep (no DepthController)
     }

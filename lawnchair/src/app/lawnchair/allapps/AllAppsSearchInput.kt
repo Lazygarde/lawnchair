@@ -269,7 +269,16 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
             if (event.action == MotionEvent.ACTION_DOWN && !input.hasFocus()) {
                 setDirectFocus(true)
             }
+            if (event.action == MotionEvent.ACTION_UP) {
+                input.post {
+                    input.showKeyboard()
+                }
+            }
             false
+        }
+
+        input.setOnClickListener {
+            input.showKeyboard()
         }
 
         input.onFocusChangeListener = { _, hasFocus ->
@@ -280,9 +289,14 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
                     input.setHint(R.string.all_apps_search_bar_hint)
                 }
 
-                if (input.text.toString().isEmpty() && isDirectFocus) {
-                    searchAlgorithm?.doZeroStateSearch(this)
+                if (isDirectFocus) {
+                    if (input.text.toString().isEmpty()) {
+                        searchAlgorithm?.doZeroStateSearch(this)
+                    }
                     setDirectFocus(false)
+                    input.post {
+                        input.showKeyboard()
+                    }
                 }
 
                 setBackgroundVisibility(false, 0f)
