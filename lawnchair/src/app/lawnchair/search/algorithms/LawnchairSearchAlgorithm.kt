@@ -1,9 +1,16 @@
 package app.lawnchair.search.algorithms
 
 import android.content.Context
+import android.util.Log
 import app.lawnchair.LawnchairApp
 import app.lawnchair.allapps.views.SearchItemBackground
 import app.lawnchair.allapps.views.SearchResultView.Companion.EXTRA_QUICK_LAUNCH
+import app.lawnchair.drawerslots.DrawerSlot
+import app.lawnchair.drawerslots.DrawerSlotController
+import app.lawnchair.drawerslots.HostSlotAdapterItem
+import app.lawnchair.drawerslots.LawnchairDrawerSlotRegistry
+import app.lawnchair.drawerslots.SearchResultKind
+import app.lawnchair.drawerslots.SearchSlotPlanner
 import app.lawnchair.preferences2.PreferenceManager2
 import app.lawnchair.preferences2.firstCached
 import app.lawnchair.search.LawnchairSearchAdapterProvider
@@ -28,10 +35,20 @@ import com.android.app.search.LayoutType.TEXT_HEADER
 import com.android.app.search.LayoutType.THUMBNAIL
 import com.android.app.search.LayoutType.WIDGET_LIVE
 import com.android.launcher3.LauncherHost
+import com.android.launcher3.R
 import com.android.launcher3.Utilities
 import com.android.launcher3.allapps.BaseAllAppsAdapter
 import com.android.launcher3.search.SearchAlgorithm
 import com.android.launcher3.search.SearchCallback
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 
 sealed class LawnchairSearchAlgorithm(
     protected val context: Context,
@@ -213,10 +230,139 @@ sealed class LawnchairSearchAlgorithm(
 
     open fun doZeroStateSearch(callback: SearchCallback<BaseAllAppsAdapter.AdapterItem>) {
         // Default implementation is to clear results.
+        cancelHostSlots()
         callback.clearSearchResult()
     }
 
+    // region Host search slots
+
+    private val hostSlotScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+    private var hostSlotJob: Job? = null
+    private var hostSlotJobQuery: String? = null
+    private var latestQuery: String? = null
+    private var latestOrganic: ArrayList<BaseAllAppsAdapter.AdapterItem> = ArrayList()
+    private var latestCallback: SearchCallback<BaseAllAppsAdapter.AdapterItem>? = null
+
+    // Provider's answer for the latest query, so later organic updates keep the slots.
+    private var resolvedQuery: String? = null
+    private var resolvedCount = 0
+
+    // Query for which slots were emitted (their views exist); organic updates keep them.
+    private var shownQuery: String? = null
+
+    /**
+     * Single exit point for search results (main thread). Organic [items] are emitted right away
+     * and unchanged. In parallel, if a provider wants search slots, it is asked for a count after a
+     * debounce and, if still relevant, the results are emitted again with slots inserted after the
+     * first group. Never used for zero-state results.
+     */
+    protected fun emitWithHostSlots(
+        query: String,
+        items: ArrayList<BaseAllAppsAdapter.AdapterItem>,
+        callback: SearchCallback<BaseAllAppsAdapter.AdapterItem>,
+    ) {
+        latestQuery = query
+        latestOrganic = items
+        latestCallback = callback
+        val controller = DrawerSlotController.get(context)
+        val provider = if (controller?.isEnabled == true) {
+            LawnchairDrawerSlotRegistry.providerFor(context, DrawerSlot.Type.SEARCH)
+        } else {
+            null
+        }
+        if (controller == null || provider == null) {
+            callback.onSearchResult(query, items)
+            return
+        }
+        // Drop views of stale queries (provider gets onSlotRemoved).
+        controller.evictSearchSlots(query)
+        if (shownQuery != null && shownQuery != query) shownQuery = null
+
+        // Slots are on screen for this query already: keep them on organic updates (views exist).
+        if (shownQuery == query && resolvedQuery == query && resolvedCount > 0) {
+            callback.onSearchResult(query, withHostSlots(query, items, resolvedCount, controller))
+            return
+        }
+        callback.onSearchResult(query, items)
+
+        if (hostSlotJob?.isActive == true && hostSlotJobQuery == query) return // pending, uses latestOrganic
+        hostSlotJob?.cancel()
+        val minQuery = context.resources.getInteger(R.integer.config_drawer_slot_search_min_query)
+        if (query.length < minQuery) return
+        hostSlotJobQuery = query
+        hostSlotJob = hostSlotScope.launch {
+            // Never create slot views (and so ad requests) before the query was stable for the
+            // debounce interval, including when the count for this query is already known.
+            delay(HOST_SLOT_DEBOUNCE_MS)
+            val count = if (resolvedQuery == query) {
+                resolvedCount
+            } else {
+                try {
+                    withTimeoutOrNull(HOST_SLOT_TIMEOUT_MS) { provider.searchItemCount(query) } ?: 0
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (t: Throwable) {
+                    0
+                }
+            }
+            if (latestQuery != query) return@launch
+            resolvedQuery = query
+            resolvedCount = count
+            val target = latestCallback
+            // Stale or closed search: do not bring the results screen back.
+            if (count <= 0 || target == null || !controller.searchActive) return@launch
+            shownQuery = query
+            target.onSearchResult(query, withHostSlots(query, latestOrganic, count, controller))
+        }
+    }
+
+    private fun withHostSlots(
+        query: String,
+        organic: ArrayList<BaseAllAppsAdapter.AdapterItem>,
+        count: Int,
+        controller: DrawerSlotController,
+    ): ArrayList<BaseAllAppsAdapter.AdapterItem> {
+        val kinds = organic.map { item ->
+            val target = (item as? SearchAdapterItem)?.searchTarget
+            when {
+                target == null -> SearchResultKind.OTHER
+                target.layoutType == EMPTY_DIVIDER -> SearchResultKind.DIVIDER
+                target.layoutType == TEXT_HEADER -> SearchResultKind.HEADER
+                target.isApp || target.isShortcut -> SearchResultKind.APP
+                else -> SearchResultKind.OTHER
+            }
+        }
+        val indices = SearchSlotPlanner.insertionIndices(kinds, count)
+        if (Log.isLoggable(LOG_TAG, Log.DEBUG)) Log.d(LOG_TAG, "search slots for '$query': kinds=$kinds -> $indices")
+        val result = ArrayList(organic)
+        // Highest slot first so earlier indices stay valid; equal indices keep slot order.
+        for (k in count - 1 downTo 0) {
+            val index = indices[k] ?: continue
+            val slot = DrawerSlot.Search(query, k)
+            val view = controller.obtainView(slot) ?: continue
+            result.add(index, HostSlotAdapterItem(slot, view, controller.kindOf(slot)))
+        }
+        return result
+    }
+
+    protected fun cancelHostSlots() {
+        hostSlotJob?.cancel()
+        hostSlotJob = null
+        hostSlotJobQuery = null
+    }
+
+    override fun destroy() {
+        cancelHostSlots()
+        hostSlotScope.cancel()
+    }
+
+    // endregion
+
     companion object {
+
+        private const val LOG_TAG = "DrawerSlots"
+        private const val HOST_SLOT_DEBOUNCE_MS = 300L
+        private const val HOST_SLOT_TIMEOUT_MS = 1500L
 
         const val APP_SEARCH = "appSearch"
         const val LOCAL_SEARCH = "localSearch"

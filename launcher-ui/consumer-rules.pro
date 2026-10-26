@@ -15,3 +15,6 @@
 
 # Allow safe references to newer or internal window APIs
 -dontwarn android.window.**
+
+# Public host API for drawer slots
+-keep class app.lawnchair.drawerslots.** { *; }

@@ -59,13 +59,14 @@ class LawnchairAppSearchAlgorithm(context: Context) : LawnchairSearchAlgorithm(c
             override fun execute(app: ModelTaskController, dataModel: BgDataModel, apps: AllAppsList) {
                 coroutineScope.launch(Dispatchers.Main) {
                     val results = getResult(apps.data, query)
-                    callback.onSearchResult(query, results)
+                    emitWithHostSlots(query, results, callback)
                 }
             }
         })
     }
 
     override fun cancel(interruptActiveRequests: Boolean) {
+        cancelHostSlots()
         if (interruptActiveRequests) {
             resultHandler.removeCallbacksAndMessages(null)
         }

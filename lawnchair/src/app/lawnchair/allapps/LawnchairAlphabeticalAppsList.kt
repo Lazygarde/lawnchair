@@ -8,6 +8,12 @@ import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
 import app.lawnchair.data.folder.FolderEntry
 import app.lawnchair.data.folder.model.FolderViewModel
+import app.lawnchair.drawerslots.DrawerSlot
+import app.lawnchair.drawerslots.DrawerSlotController
+import app.lawnchair.drawerslots.DrawerSlotKind
+import app.lawnchair.drawerslots.HostSlotAdapterItem
+import app.lawnchair.drawerslots.InlineSlotPlanner
+import app.lawnchair.drawerslots.LawnchairDrawerSlotRegistry
 import app.lawnchair.launcher
 import app.lawnchair.preferences.PreferenceManager
 import app.lawnchair.preferences2.PreferenceManager2
@@ -16,6 +22,7 @@ import app.lawnchair.util.observeOnce
 import com.android.launcher3.InvariantDeviceProfile.OnIDPChangeListener
 import com.android.launcher3.allapps.AllAppsStore
 import com.android.launcher3.allapps.AlphabeticalAppsList
+import com.android.launcher3.allapps.BaseAllAppsAdapter
 import com.android.launcher3.allapps.BaseAllAppsAdapter.AdapterItem
 import com.android.launcher3.allapps.PrivateProfileManager
 import com.android.launcher3.allapps.WorkProfileManager
@@ -33,6 +40,8 @@ class LawnchairAlphabeticalAppsList<T>(
     private val appsStore: AllAppsStore<T>,
     workProfileManager: WorkProfileManager?,
     privateProfileManager: PrivateProfileManager?,
+    /** False for the search results list, which must not insert host slots (keys are per list). */
+    private val supportsHostSlots: Boolean = true,
 ) : AlphabeticalAppsList<T>(context, appsStore, workProfileManager, privateProfileManager),
     OnIDPChangeListener,
     DefaultLifecycleObserver
@@ -48,7 +57,11 @@ class LawnchairAlphabeticalAppsList<T>(
     private val folderList = mutableListOf<FolderEntry>()
     private val filteredList = mutableListOf<AppInfo>()
 
+    // Re-runs the list when INLINE slots change (see DrawerSlotController.addInlineListener).
+    private val inlineSlotsChanged = Runnable { onAppsUpdated() }
+
     init {
+        if (supportsHostSlots) DrawerSlotController.get(context)?.addInlineListener(inlineSlotsChanged)
         context.launcher.deviceProfile.inv.addOnChangeListener(this)
         (context as? LifecycleOwner)?.lifecycle?.addObserver(this)
         try {
@@ -63,6 +76,7 @@ class LawnchairAlphabeticalAppsList<T>(
     }
 
     override fun onDestroy(owner: LifecycleOwner) {
+        DrawerSlotController.get(context)?.removeInlineListener(inlineSlotsChanged)
         context.launcher.deviceProfile.inv.removeOnChangeListener(this)
     }
 
@@ -136,6 +150,44 @@ class LawnchairAlphabeticalAppsList<T>(
         }
 
         return position
+    }
+
+    /**
+     * Inserts inline host slots at row boundaries of the A-Z / folder grid. Nothing is inserted
+     * for search results, inside the private space section, or in the work list unless the slot is
+     * CONTENT and its provider allows the work tab. Slots without a view are not inserted.
+     */
+    override fun onAdapterItemsBuilt(
+        items: MutableList<BaseAllAppsAdapter.AdapterItem>,
+        fastScrollerSections: MutableList<FastScrollSectionInfo>,
+    ) {
+        if (!supportsHostSlots || hasSearchResults()) return
+        val perRow = numAppsPerRow
+        if (perRow <= 0) return
+        val controller = DrawerSlotController.get(context) ?: return
+        val provider = LawnchairDrawerSlotRegistry.providerFor(context, DrawerSlot.Type.INLINE) ?: return
+
+        val psHeader = items.indexOfFirst { BaseAllAppsAdapter.isPrivateSpaceHeaderView(it.viewType) }
+        val limit = if (psHeader >= 0) psHeader else items.size
+        val icons = (0 until limit).filter { BaseAllAppsAdapter.isIconViewType(items[it].viewType) }.toIntArray()
+        if (icons.isEmpty()) return
+
+        val positions = provider.inlineRowPositions(InlineSlotPlanner.rowCount(icons.size, perRow))
+        val inserted = mutableListOf<Pair<Int, HostSlotAdapterItem>>()
+        for ((beforeIndex, slotIndex) in InlineSlotPlanner.plan(icons, perRow, positions)) {
+            val slot = DrawerSlot.Inline(slotIndex, inWorkTab = isWorkAppsList)
+            if (isWorkAppsList && !(provider.kindOf(slot) == DrawerSlotKind.CONTENT && provider.showOnWorkTab(slot))) continue
+            val view = controller.obtainView(slot) ?: continue
+            inserted.add(beforeIndex to HostSlotAdapterItem(slot, view, controller.kindOf(slot)))
+        }
+        if (inserted.isEmpty()) return
+
+        // Highest index first so earlier indices stay valid.
+        inserted.asReversed().forEach { (index, item) -> items.add(index, item) }
+        val indices = inserted.map { it.first }
+        fastScrollerSections.replaceAll { section ->
+            FastScrollSectionInfo(section.sectionName, InlineSlotPlanner.shiftedPosition(section.position, indices)).also { it.id = section.id }
+        }
     }
 
     override fun onIdpChanged(modelPropertiesChanged: Boolean) {

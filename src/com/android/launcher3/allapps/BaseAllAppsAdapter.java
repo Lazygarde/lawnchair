@@ -25,6 +25,7 @@ import static com.android.launcher3.allapps.SectionDecorationInfo.ROUND_TOP_RIGH
 import static com.android.launcher3.allapps.UserProfileManager.STATE_DISABLED;
 import static com.android.launcher3.allapps.UserProfileManager.STATE_ENABLED;
 
+import app.lawnchair.drawerslots.HostSlotBinder;
 import android.content.Context;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -71,6 +72,10 @@ public abstract class BaseAllAppsAdapter<T extends Context & ActivityContext> ex
     public static final int VIEW_TYPE_PRIVATE_SPACE_SYS_APPS_DIVIDER = 1 << 7;
     public static final int VIEW_TYPE_BOTTOM_VIEW_TO_SCROLL_TO = 1 << 8;
     public static final int NEXT_ID = 9;
+
+    // LC: host-provided inline slot (see app.lawnchair.drawerslots). 1 << 23 is above the folder
+    // type (1 << 10) and every search provider type (1 << 10 .. 1 << 22).
+    public static final int VIEW_TYPE_HOST_SLOT = 1 << 23;
 
     // LC-Feature: Folder support in All Apps, can be any ID
     public static final int VIEW_TYPE_FOLDER = 1 << 10;
@@ -261,6 +266,9 @@ public abstract class BaseAllAppsAdapter<T extends Context & ActivityContext> ex
                         R.layout.private_space_header, parent, false));
             case VIEW_TYPE_BOTTOM_VIEW_TO_SCROLL_TO:
                 return new ViewHolder(new View(mActivityContext));
+            case VIEW_TYPE_HOST_SLOT:
+                // LC: host inline slot, handled here rather than by mAdapterProvider
+                return HostSlotBinder.createHolder(mActivityContext);
             case VIEW_TYPE_FOLDER:
                 // LC-Feature: Folder support in All Apps
                 FrameLayout fl = new FrameLayout(mActivityContext);
@@ -359,6 +367,10 @@ public abstract class BaseAllAppsAdapter<T extends Context & ActivityContext> ex
             case VIEW_TYPE_WORK_EDU_CARD:
                 ((WorkEduCard) holder.itemView).setPosition(position);
                 break;
+            case VIEW_TYPE_HOST_SLOT:
+                // LC: attaches the cached host view (re-parented, never recreated)
+                HostSlotBinder.bind(mActivityContext, holder, mApps.getAdapterItems().get(position));
+                break;
             case VIEW_TYPE_FOLDER:
                 // LC: Caddy/Folder in allapps 86b2b025a4f23a068818274020f37ad6d5268363
                 FolderInfo folderInfo = mApps.getAdapterItems().get(position).folderInfo;
@@ -374,6 +386,23 @@ public abstract class BaseAllAppsAdapter<T extends Context & ActivityContext> ex
                 if (mAdapterProvider.isViewSupported(holder.getItemViewType())) {
                     mAdapterProvider.onBindView(holder, position);
                 }
+        }
+    }
+
+    // LC: visibility tracking for host inline slots
+    @Override
+    public void onViewAttachedToWindow(ViewHolder holder) {
+        super.onViewAttachedToWindow(holder);
+        if (holder.getItemViewType() == VIEW_TYPE_HOST_SLOT) {
+            HostSlotBinder.onAttached(mActivityContext, holder);
+        }
+    }
+
+    @Override
+    public void onViewDetachedFromWindow(ViewHolder holder) {
+        super.onViewDetachedFromWindow(holder);
+        if (holder.getItemViewType() == VIEW_TYPE_HOST_SLOT) {
+            HostSlotBinder.onDetached(mActivityContext, holder);
         }
     }
 

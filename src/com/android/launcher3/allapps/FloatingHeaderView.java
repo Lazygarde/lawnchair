@@ -375,6 +375,27 @@ public class FloatingHeaderView extends LinearLayout implements
     }
 
     /**
+     * LC: clips the lists' content at [bottom] (in the lists' own coordinates), or Integer.MAX_VALUE
+     * for no clip. Used so list content (e.g. inline host slots) never draws under a footer slot.
+     * Shares the clip rect with the header collapse logic, which keeps owning the top.
+     */
+    public void setRecyclerViewBottomClip(int bottom) {
+        if (mRVClip.bottom == bottom) {
+            return;
+        }
+        mRVClip.bottom = bottom;
+        if (mMainRV != null) {
+            mMainRV.setClipBounds(mRVClip);
+        }
+        if (mWorkRV != null) {
+            mWorkRV.setClipBounds(mRVClip);
+        }
+        if (mSearchRV != null) {
+            mSearchRV.setClipBounds(mRVClip);
+        }
+    }
+
+    /**
      * Hides all the floating rows
      */
     public void setFloatingRowsCollapsed(boolean collapsed) {

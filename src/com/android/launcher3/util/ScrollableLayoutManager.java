@@ -76,12 +76,26 @@ public class ScrollableLayoutManager extends GridLayoutManager {
     }
 
     private void updateCachedSize(@NonNull View child) {
-        int viewType = mRv.getChildViewHolder(child).getItemViewType();
+        ViewHolder holder = mRv.getChildViewHolder(child);
+        int viewType = holder.getItemViewType();
         int size = child.getMeasuredHeight();
+        // LC: let subclasses size some types per item instead of per type
+        if (onChildSizeMeasured(holder, size)) {
+            return;
+        }
         if (mCachedSizes.get(viewType, -1) != size) {
             invalidateScrollCache();
         }
         mCachedSizes.put(viewType, size);
+    }
+
+    /**
+     * LC: called for every laid out child. Return true if the size was handled by the subclass
+     * (and must not go into the per-view-type cache). Use {@link #invalidateScrollCache()} when a
+     * size that the scroll estimate depends on changed.
+     */
+    protected boolean onChildSizeMeasured(@NonNull ViewHolder holder, int size) {
+        return false;
     }
 
     @Override
@@ -163,7 +177,7 @@ public class ScrollableLayoutManager extends GridLayoutManager {
         return heightUntilLastPos + mCachedSizes.get(adapter.getItemViewType(position));
     }
 
-    private void invalidateScrollCache() {
+    protected void invalidateScrollCache() {
         mLastValidHeightIndex = 0;
     }
 

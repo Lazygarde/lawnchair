@@ -52,6 +52,7 @@ class LawnchairASISearchAlgorithm(context: Context) :
 
     override fun cancel(interruptActiveRequests: Boolean) {
         activeQuery?.cancel()
+        cancelHostSlots()
     }
 
     override fun destroy() {
@@ -111,9 +112,10 @@ class LawnchairASISearchAlgorithm(context: Context) :
                 val targets = platformTargets.map { SearchTargetCompat.wrap(it) }
                 setFirstItemQuickLaunch(targets)
                 val adapterItems = transformSearchResults(targets)
-                callback.onSearchResult(
+                emitWithHostSlots(
                     query,
                     ArrayList<BaseAllAppsAdapter.AdapterItem>(adapterItems),
+                    callback,
                 )
             }
         }

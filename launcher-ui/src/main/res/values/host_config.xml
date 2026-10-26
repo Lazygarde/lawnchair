@@ -28,4 +28,33 @@
       the custom overlay will take precedence on the minus-one screen.
     -->
     <bool name="config_enable_custom_overlay" translatable="false">true</bool>
+
+    <!--
+      Master switch for host-provided slots (ads or regular content) in the app drawer. Even when true, nothing is shown until a
+      provider is registered in LawnchairDrawerSlotRegistry and it enables the slot type.
+    -->
+    <bool name="config_enable_drawer_slots" translatable="false">false</bool>
+
+    <!-- Minimum search query length before the host is asked for search slot items. -->
+    <integer name="config_drawer_slot_search_min_query" translatable="false">2</integer>
+
+    <!--
+      Theme overlay applied to the context used to inflate drawer slot views (see
+      DrawerSlotEnv.themedContext). The launcher activity theme is not AppCompat/Material, so a host
+      whose slot layouts use MaterialButton etc. overrides this style with the same name, e.g.
+      parent="Theme.Material3.DayNight.NoActionBar". The default is empty, i.e. the launcher theme.
+    -->
+    <style name="LawnchairDrawerSlotTheme" />
+
+    <!--
+      Spacing owned by the library so every slot looks consistent and hosts just return a
+      MATCH_PARENT-width view. Side insets are not configurable: slots always align with the app
+      grid edges (header, footer, inline) or with the search result cards (search).
+      Vertical gap above AND below an inline slot in the app grid.
+    -->
+    <dimen name="drawer_slot_vertical_spacing_inline">8dp</dimen>
+    <!-- Vertical gap above AND below a search slot (result groups are about 17dp apart). -->
+    <dimen name="drawer_slot_vertical_spacing_search">12dp</dimen>
+    <!-- Gap between the list and the footer slot's view. -->
+    <dimen name="drawer_slot_footer_top_spacing">4dp</dimen>
 </resources>

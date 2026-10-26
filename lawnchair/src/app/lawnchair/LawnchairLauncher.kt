@@ -40,6 +40,7 @@ import app.lawnchair.LawnchairApp.Companion.showQuickstepWarningIfNecessary
 import app.lawnchair.compat.LawnchairQuickstepCompat
 import app.lawnchair.data.AppDatabase
 import app.lawnchair.data.wallpaper.service.WallpaperService
+import app.lawnchair.drawerslots.DrawerSlotController
 import app.lawnchair.gestures.GestureController
 import app.lawnchair.gestures.VerticalSwipeTouchController
 import app.lawnchair.gestures.config.GestureHandlerConfig
@@ -103,6 +104,9 @@ import kotlinx.coroutines.launch
 open class LawnchairLauncher : LawnchairLauncherBase() {
     private val defaultOverlay by unsafeLazy { OverlayCallbackImpl(this) }
     private val prefs by unsafeLazy { PreferenceManager.getInstance(this) }
+
+    /** Drawer slots glue (view cache, header/footer slots). A no-op unless config_enable_drawer_slots is true. */
+    val drawerSlots by unsafeLazy { DrawerSlotController(this) }
     private val preferenceManager2 by unsafeLazy { PreferenceManager2.getInstance(this) }
     private val insetsController: WindowInsetsControllerCompat by lazy {
         val window = launcher.window
@@ -517,6 +521,16 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
         }
     }
 
+    override fun onStart() {
+        super.onStart()
+        drawerSlots.onHostStarted { stateManager.state }
+    }
+
+    override fun onStop() {
+        super.onStop()
+        drawerSlots.onHostStopped()
+    }
+
     override fun onPause() {
         super.onPause()
         if (stateManager.state != LauncherState.ALL_APPS && overlayProgress <= 0.05f) {
@@ -539,6 +553,7 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
 
     override fun onStateSetEnd(state: LauncherState) {
         super.onStateSetEnd(state)
+        drawerSlots.onStateSetEnd(state)
         refreshPredictionContainersFromModel()
         if (state == LauncherState.NORMAL) {
             allAppsProgress = 0f
@@ -663,6 +678,7 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
 
     override fun onDestroy() {
         super.onDestroy()
+        drawerSlots.onDestroy()
         // Only actually closes if required, safe to call if not enabled
         SmartspacerClient.close()
     }

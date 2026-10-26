@@ -330,6 +330,8 @@ public class AlphabeticalAppsList<T extends Context & ActivityContext> implement
                 Log.d(TAG, "Adding FastScrollSection duplicate to scroll to the bottom.");
             }
         }
+        // LC: let subclasses insert host slots before rows/accessibility are computed
+        onAdapterItemsBuilt(mAdapterItems, mFastScrollerSections);
         mAccessibilityResultsCount = (int) mAdapterItems.stream()
                 .filter(AdapterItem::isCountedForAccessibility).count();
 
@@ -343,7 +345,8 @@ public class AlphabeticalAppsList<T extends Context & ActivityContext> implement
                 item.rowIndex = 0;
                 if (BaseAllAppsAdapter.isDividerViewType(item.viewType)
                         || BaseAllAppsAdapter.isPrivateSpaceHeaderView(item.viewType)
-                        || BaseAllAppsAdapter.isPrivateSpaceSysAppsDividerView(item.viewType)) {
+                        || BaseAllAppsAdapter.isPrivateSpaceSysAppsDividerView(item.viewType)
+                        || item.viewType == BaseAllAppsAdapter.VIEW_TYPE_HOST_SLOT) { // LC
                     numAppsInSection = 0;
                 } else if (BaseAllAppsAdapter.isIconViewType(item.viewType)) {
                     if (numAppsInSection % mNumAppsPerRowAllApps == 0) {
@@ -363,6 +366,19 @@ public class AlphabeticalAppsList<T extends Context & ActivityContext> implement
             DiffUtil.calculateDiff(new MyDiffCallback(oldItems, mAdapterItems), false)
                     .dispatchUpdatesTo(mAdapter);
         }
+    }
+
+    /**
+     * LC: called after the adapter items and fast scroller sections were built, before the
+     * accessibility count and row indices are computed. Subclasses may insert items (e.g. host
+     * slots) and must shift the fast scroller section positions accordingly.
+     */
+    protected void onAdapterItemsBuilt(List<AdapterItem> items,
+            List<FastScrollSectionInfo> fastScrollerSections) { }
+
+    /** LC: number of apps per row used for row index computation. */
+    protected int getNumAppsPerRow() {
+        return mNumAppsPerRowAllApps;
     }
 
     int addPrivateSpaceItems(int position) {

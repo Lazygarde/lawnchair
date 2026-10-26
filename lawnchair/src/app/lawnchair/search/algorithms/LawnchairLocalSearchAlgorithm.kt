@@ -83,7 +83,7 @@ class LawnchairLocalSearchAlgorithm(context: Context) : LawnchairSearchAlgorithm
                     setFirstItemQuickLaunch(searchTargets)
                     val adapterItems = transformSearchResults(searchTargets)
                     withContext(Dispatchers.Main) {
-                        callback.onSearchResult(query, ArrayList(adapterItems))
+                        emitWithHostSlots(query, ArrayList(adapterItems), callback)
                     }
                 }
             }
@@ -92,6 +92,7 @@ class LawnchairLocalSearchAlgorithm(context: Context) : LawnchairSearchAlgorithm
 
     override fun doZeroStateSearch(callback: SearchCallback<BaseAllAppsAdapter.AdapterItem>) {
         currentJob?.cancel()
+        cancelHostSlots()
 
         val prefs = PreferenceManager.getInstance(context)
         val historyEnabled = prefs.searchResulRecentSuggestion.get()
@@ -128,6 +129,7 @@ class LawnchairLocalSearchAlgorithm(context: Context) : LawnchairSearchAlgorithm
 
     override fun cancel(interruptActiveRequests: Boolean) {
         currentJob?.cancel()
+        cancelHostSlots()
     }
 
     private fun generateActionResults(query: String): List<SearchResult.Action> {

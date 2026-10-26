@@ -162,6 +162,8 @@ dependencies {
     api projects.displaylib
     api projects.mechanics
 
+    testImplementation libs.junit
+
     compileOnly projects.hiddenApi
     implementation projects.shared
     implementation projects.animation

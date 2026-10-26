@@ -17,6 +17,9 @@
  */
 package com.android.launcher3.allapps;
 
+import app.lawnchair.drawerslots.HostSlotAdapterItem;
+import app.lawnchair.drawerslots.HostSlotBinder;
+import app.lawnchair.drawerslots.SlotHeightTable;
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -186,9 +189,30 @@ public class AllAppsGridAdapter<T extends Context & ActivityContext> extends
             }
         }
 
+        // LC: host inline slots have their own height each; see SlotHeightTable
+        private final SlotHeightTable mSlotHeights = new SlotHeightTable();
+
+        @Override
+        protected boolean onChildSizeMeasured(RecyclerView.ViewHolder holder, int size) {
+            if (holder.getItemViewType() != VIEW_TYPE_HOST_SLOT) {
+                return false;
+            }
+            String key = HostSlotBinder.keyOf(holder);
+            if (key != null && mSlotHeights.record(key, size)) {
+                invalidateScrollCache();
+            }
+            return true;
+        }
+
         @Override
         protected int incrementTotalHeight(Adapter adapter, int position, int heightUntilLastPos) {
             AllAppsGridAdapter.AdapterItem item = mApps.getAdapterItems().get(position);
+            if (item instanceof HostSlotAdapterItem) {
+                HostSlotAdapterItem slotItem = (HostSlotAdapterItem) item;
+                return heightUntilLastPos + mSlotHeights.estimate(slotItem.getSlot().getKey(),
+                        slotItem.getView().getMeasuredHeight(),
+                        mActivityContext.getDeviceProfile().getAllAppsProfile().getCellHeightPx());
+            }
             // only account for the first icon in the row since they are the same size
             // within a row
             return (isIconViewType(item.viewType) && item.rowAppIndex != 0)

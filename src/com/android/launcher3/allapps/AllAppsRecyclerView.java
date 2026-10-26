@@ -33,6 +33,7 @@ import static com.android.launcher3.recyclerview.AllAppsRecyclerViewPoolKt.EXTRA
 import static com.android.launcher3.recyclerview.AllAppsRecyclerViewPoolKt.PREINFLATE_ICONS_ROW_COUNT;
 import static com.android.launcher3.util.LogConfig.SEARCH_LOGGING;
 
+import app.lawnchair.drawerslots.SlotFocusNavigator;
 import android.content.Context;
 import android.graphics.Canvas;
 import android.util.AttributeSet;
@@ -102,6 +103,24 @@ public class AllAppsRecyclerView extends FastScrollRecyclerView {
      */
     public void setApps(AlphabeticalAppsList<?> apps) {
         mApps = apps;
+    }
+
+    // LC: x centre of the last focused grid item, to keep the column across host slots
+    private int mLastGridFocusX = -1;
+
+    @Override
+    public void requestChildFocus(View child, View focused) {
+        super.requestChildFocus(child, focused);
+        ViewHolder holder = getChildViewHolder(child);
+        if (holder != null && holder.getItemViewType() != BaseAllAppsAdapter.VIEW_TYPE_HOST_SLOT) {
+            mLastGridFocusX = child.getLeft() + child.getWidth() / 2;
+        }
+    }
+
+    @Override
+    public View focusSearch(View focused, int direction) {
+        View target = SlotFocusNavigator.resolve(this, focused, direction, mLastGridFocusX);
+        return target != null ? target : super.focusSearch(focused, direction);
     }
 
     public AlphabeticalAppsList<?> getApps() {

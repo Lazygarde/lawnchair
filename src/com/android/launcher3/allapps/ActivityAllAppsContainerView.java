@@ -115,6 +115,8 @@ import java.util.stream.Stream;
 
 import app.lawnchair.preferences2.PreferenceCacheExtensionsKt;
 import static com.topjohnwu.superuser.internal.Utils.context;
+import app.lawnchair.drawerslots.DrawerSlotController;
+import app.lawnchair.drawerslots.HostSlotFooter;
 import app.lawnchair.allapps.LawnchairAlphabeticalAppsList;
 import app.lawnchair.font.FontManager;
 import app.lawnchair.preferences.PreferenceManager;
@@ -182,6 +184,10 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
     protected AllAppsPagedView mViewPager;
     protected FloatingHeaderView mHeader;
     protected final List<AllAppsRow> mAdditionalHeaderRows = new ArrayList<>();
+    // LC: host drawer slots (header row is an AllAppsRow, footer is a fixed bottom slot)
+    @Nullable private DrawerSlotController mHostSlots;
+    @Nullable private HostSlotFooter mHostSlotFooter;
+    private boolean mHostSlotImeVisible = false;
     protected View mBottomSheetBackground;
     protected RecyclerViewFastScroller mFastScroller;
     private ConstraintLayout mFastScrollLetterLayout;
@@ -302,14 +308,35 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
                 new LawnchairAlphabeticalAppsList<>(mActivityContext,
                         mAllAppsStore,
                         null,
-                        mPrivateProfileManager)));
+                        mPrivateProfileManager,
+                        /* supportsHostSlots= */ true)));
         mAH.set(AdapterHolder.WORK, new AdapterHolder(AdapterHolder.WORK,
-                new LawnchairAlphabeticalAppsList<>(mActivityContext, mAllAppsStore, mWorkManager, null)));
+                new LawnchairAlphabeticalAppsList<>(mActivityContext, mAllAppsStore, mWorkManager, null,
+                        /* supportsHostSlots= */ true)));
         mAH.set(SEARCH, new AdapterHolder(SEARCH,
-                new LawnchairAlphabeticalAppsList<>(mActivityContext, mAllAppsStore, null, null)));
+                new LawnchairAlphabeticalAppsList<>(mActivityContext, mAllAppsStore, null, null,
+                        /* supportsHostSlots= */ false)));
 
         getLayoutInflater().inflate(R.layout.all_apps_content, this);
         mHeader = findViewById(R.id.all_apps_header);
+        // LC: host drawer slots; both are no-ops unless config_enable_drawer_slots is true
+        mHostSlots = DrawerSlotController.get(getContext());
+        if (mHostSlots != null) {
+            mHostSlotFooter = mHostSlots.createFooter(
+                    findViewById(R.id.all_apps_host_slot_footer), this::onHostSlotFooterHeightChanged);
+        }
+        if (mHostSlots != null) {
+            mHostSlots.setHeaderPresenceListener(() -> mHostSlots.runHeaderChange(() -> {
+                if (mHeader.isSetUp()) {
+                    setupHeader();
+                    updateSearchResultsVisibility();
+                }
+            }));
+            mHostSlots.setListScrolled(() -> {
+                RecyclerView rv = mAH.get(getCurrentPage()).mRecyclerView;
+                return rv != null && rv.computeVerticalScrollOffset() > 0;
+            });
+        }
         mAdditionalHeaderRows.clear();
         mAdditionalHeaderRows.addAll(getAdditionalHeaderRows());
         mBottomSheetBackground = findViewById(R.id.bottom_sheet_background);
@@ -336,7 +363,70 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
     }
 
     public List<AllAppsRow> getAdditionalHeaderRows() {
-        return List.of();
+        // LC: host header slot row (height 0 until a view is available)
+        return mHostSlots != null ? mHostSlots.createHeaderRows() : List.of();
+    }
+
+    // LC: the header shell is also shown when it only holds a host slot
+    private boolean isHeaderShellHidden() {
+        return isAppDrawerSearchBarHidden() && !mUsingTabs
+                && (mHostSlots == null || !mHostSlots.hasHeaderSlot());
+    }
+
+    // LC: footer slot changed height: keep lists and fast scroller clear of it
+    private int mHostSlotFooterAppliedHeight = 0;
+
+    private void onHostSlotFooterHeightChanged() {
+        if (mHostSlotFooter == null) return;
+        int height = mHostSlotFooter.getHeightPx();
+        int delta = height - mHostSlotFooterAppliedHeight;
+        mHostSlotFooterAppliedHeight = height;
+        if (delta != 0) {
+            for (View v : new View[] {mFastScroller, mFastScrollLetterLayout}) {
+                if (v != null && v.getLayoutParams() instanceof MarginLayoutParams) {
+                    MarginLayoutParams lp = (MarginLayoutParams) v.getLayoutParams();
+                    lp.bottomMargin += delta;
+                    v.setLayoutParams(lp);
+                }
+            }
+        }
+        applyAdapterSideAndBottomPaddings(mActivityContext.getDeviceProfile());
+        updateHostSlotFooterClip();
+        if (delta != 0) {
+            // Re-scroll the focused item above the footer now that the bottom padding changed.
+            RecyclerView rv = mAH.get(getCurrentPage()).mRecyclerView;
+            View focused = rv == null ? null : rv.getFocusedChild();
+            if (focused != null) {
+                rv.post(() -> rv.requestChildRectangleOnScreen(focused,
+                        new Rect(0, 0, focused.getWidth(), focused.getHeight()), false));
+            }
+        }
+    }
+
+    // LC: never let list content draw under the footer slot (e.g. inline ads covered by a banner)
+    private void updateHostSlotFooterClip() {
+        if (mHostSlotFooter == null || mHeader == null) return;
+        int bottom = Integer.MAX_VALUE;
+        RecyclerView rv = mAH.get(getCurrentPage()).mRecyclerView;
+        if (mHostSlotFooter.getHeightPx() > 0 && rv != null) {
+            Rect origin = new Rect(0, 0, 0, 0);
+            offsetDescendantRectToMyCoords(rv, origin);
+            bottom = mHostSlotFooter.getTopPx() - origin.top;
+        }
+        mHeader.setRecyclerViewBottomClip(bottom);
+    }
+
+    // LC: footer is hidden while searching, while the IME is open and on the work tab (which has
+    // its own bottom-anchored utility view)
+    private void updateHostSlotFooter() {
+        if (mHostSlotFooter == null) return;
+        int bottom = Math.max(mInsets.bottom, mNavBarScrimHeight);
+        if (isSearchBarFloating() && mSearchContainer != null) {
+            bottom += mSearchContainer.getHeight();
+        }
+        boolean allowed = !isSearching() && !mHostSlotImeVisible
+                && getCurrentPage() != AdapterHolder.WORK;
+        mHostSlotFooter.update(bottom, allowed);
     }
 
     @Override
@@ -428,6 +518,11 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
 
     /** Invoke when the current search session is finished. */
     public void onClearSearchResult() {
+        // LC: search slots are only valid while search results are shown
+        if (mHostSlots != null) {
+            mHostSlots.setSearchActive(false);
+            mHostSlots.evictSearchSlots(null);
+        }
         getMainAdapterProvider().clearHighlightedItem();
         animateToSearchState(false);
         rebindAdapters();
@@ -442,6 +537,9 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             getSearchRecyclerView().onSearchResultsChanged();
         }
         if (results != null) {
+            if (mHostSlots != null) {
+                mHostSlots.setSearchActive(true); // LC
+            }
             animateToSearchState(true);
         }
     }
@@ -660,8 +758,14 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
                     ALL_APPS_SCROLLER);
         }
         // Header keeps track of active recycler view to properly render header protection.
+        // LC: host header slot is hidden on the work tab unless its provider allows it (tab switch resets the list anyway)
+        if (mHostSlots != null && currentActivePage != SEARCH
+                && mHostSlots.setHeaderOnWorkTab(currentActivePage == AdapterHolder.WORK)) {
+            setupHeader();
+        }
         mHeader.setActiveRV(currentActivePage);
         reset(true /* animate */, !isSearching() /* exitSearch */);
+        updateHostSlotFooter(); // LC
 
         mWorkManager.onActivePageChanged(currentActivePage);
     }
@@ -746,7 +850,8 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
                     (LayoutParams) mFastScroller.getLayoutParams();
             scrollerLayoutParams.bottomMargin = mSearchContainer.getHeight()
                     + getResources().getDimensionPixelSize(
-                            R.dimen.fastscroll_bottom_margin_floating_search);
+                            R.dimen.fastscroll_bottom_margin_floating_search)
+                    + mHostSlotFooterAppliedHeight; // LC
         }
 
         mAllAppsStore.registerIconContainer(mAH.get(AdapterHolder.MAIN).mRecyclerView);
@@ -836,7 +941,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
 
         boolean hideSearchBar = isAppDrawerSearchBarHidden();
         // Keep personal/work tabs visible when search is off; only hide the empty header shell.
-        mHeader.setVisibility((hideSearchBar && !mUsingTabs) ? View.GONE : View.VISIBLE);
+        mHeader.setVisibility(isHeaderShellHidden() ? View.GONE : View.VISIBLE);
         boolean tabsHidden = !mUsingTabs;
         mHeader.setup(
                 mAH.get(AdapterHolder.MAIN).mRecyclerView,
@@ -845,7 +950,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
                 getCurrentPage(),
                 tabsHidden);
 
-        int padding = (hideSearchBar && !mUsingTabs) ? 0 : mHeader.getMaxTranslation();
+        int padding = isHeaderShellHidden() ? 0 : mHeader.getMaxTranslation();
         mAH.forEach(adapterHolder -> {
             adapterHolder.mPadding.top = padding;
             adapterHolder.applyPadding();
@@ -1374,6 +1479,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         DeviceProfile grid = mActivityContext.getDeviceProfile();
 
         applyAdapterSideAndBottomPaddings(grid);
+        updateHostSlotFooter(); // LC
 
         MarginLayoutParams mlp = (MarginLayoutParams) getLayoutParams();
         // Ignore left/right insets on tablet because we are already centered in-screen.
@@ -1413,7 +1519,22 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
     @Override
     public WindowInsets dispatchApplyWindowInsets(WindowInsets insets) {
         mNavBarScrimHeight = computeNavBarScrimHeight(insets);
+        // LC: hide host footer slot while the IME is open
+        mHostSlotImeVisible = Utilities.ATLEAST_R && insets.isVisible(WindowInsets.Type.ime());
+        if (mHostSlots != null) {
+            // Docked keyboard height: IME inset on R+, else the system inset beyond the stable one
+            int imeBottom;
+            if (Utilities.ATLEAST_R) {
+                imeBottom = insets.isVisible(WindowInsets.Type.ime())
+                        ? insets.getInsets(WindowInsets.Type.ime()).bottom : 0;
+            } else {
+                imeBottom = Math.max(0,
+                        insets.getSystemWindowInsetBottom() - insets.getStableInsetBottom());
+            }
+            mHostSlots.setImeInsetBottom(imeBottom);
+        }
         applyAdapterSideAndBottomPaddings(mActivityContext.getDeviceProfile());
+        updateHostSlotFooter();
         return super.dispatchApplyWindowInsets(insets);
     }
 
@@ -1438,16 +1559,17 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             getSearchRecyclerView().setVisibility(GONE);
             getAppsRecyclerViewContainer().setVisibility(VISIBLE);
             // Keep the empty header shell hidden when search is off and there are no tabs.
-            mHeader.setVisibility(
-                    (isAppDrawerSearchBarHidden() && !mUsingTabs) ? View.GONE : View.VISIBLE);
+            mHeader.setVisibility(isHeaderShellHidden() ? View.GONE : View.VISIBLE);
         }
         if (mHeader.isSetUp()) {
             mHeader.setActiveRV(getCurrentPage());
         }
+        updateHostSlotFooter(); // LC
     }
 
     private void applyAdapterSideAndBottomPaddings(DeviceProfile grid) {
-        int bottomPadding = Math.max(mInsets.bottom, mNavBarScrimHeight);
+        int bottomPadding = Math.max(mInsets.bottom, mNavBarScrimHeight)
+                + mHostSlotFooterAppliedHeight; // LC: host footer slot sits above the nav bar
         mAH.forEach(adapterHolder -> {
             adapterHolder.mPadding.bottom = bottomPadding;
             adapterHolder.mPadding.left = grid.allAppsPadding.left;
