@@ -96,16 +96,18 @@ object LawnchairDrawerSlotRegistry {
      *
      * [kind] defaults to [DrawerSlotKind.CONTENT] because these helpers are mostly used for the
      * host's own UI; pass [DrawerSlotKind.AD] for ads so they get the ad policies.
+     * [headerMode] only matters when [DrawerSlot.Type.HEADER] is among [types].
      */
     fun registerView(
         @LayoutRes layoutResId: Int,
         vararg types: DrawerSlot.Type = arrayOf(DrawerSlot.Type.HEADER, DrawerSlot.Type.FOOTER),
         kind: DrawerSlotKind = DrawerSlotKind.CONTENT,
         showOnWorkTab: Boolean = false,
+        headerMode: DrawerHeaderMode = DrawerHeaderMode.QUICK_RETURN,
         onViewBound: ((DrawerSlot, View) -> Unit)? = null,
     ) {
         // parent.context is the themed context (LawnchairDrawerSlotTheme), so Material widgets inflate.
-        registerFactory(*types, kind = kind, showOnWorkTab = showOnWorkTab) { _, parent, slot, _ ->
+        registerFactory(*types, kind = kind, showOnWorkTab = showOnWorkTab, headerMode = headerMode) { _, parent, slot, _ ->
             LayoutInflater.from(parent.context).inflate(layoutResId, parent, false).also { onViewBound?.invoke(slot, it) }
         }
     }
@@ -115,10 +117,11 @@ object LawnchairDrawerSlotRegistry {
         vararg types: DrawerSlot.Type,
         kind: DrawerSlotKind = DrawerSlotKind.CONTENT,
         showOnWorkTab: Boolean = false,
+        headerMode: DrawerHeaderMode = DrawerHeaderMode.QUICK_RETURN,
         factory: (Context, ViewGroup, DrawerSlot, DrawerSlotEnv) -> View?,
     ) {
         synchronized(lock) {
-            helperProvider.put(types.toList(), HelperEntry(factory, kind, showOnWorkTab))
+            helperProvider.put(types.toList(), HelperEntry(factory, kind, showOnWorkTab, headerMode))
             typedProviders = typedProviders + types.map { it to (helperProvider as LawnchairDrawerSlotProvider) }
         }
         types.forEach { notifySlotsChanged(it) }
@@ -133,9 +136,10 @@ object LawnchairDrawerSlotRegistry {
         vararg types: DrawerSlot.Type,
         kind: DrawerSlotKind = DrawerSlotKind.CONTENT,
         showOnWorkTab: Boolean = false,
+        headerMode: DrawerHeaderMode = DrawerHeaderMode.QUICK_RETURN,
         content: @Composable (DrawerSlot) -> Unit,
     ) {
-        registerFactory(*types, kind = kind, showOnWorkTab = showOnWorkTab) { _, _, slot, env ->
+        registerFactory(*types, kind = kind, showOnWorkTab = showOnWorkTab, headerMode = headerMode) { _, _, slot, env ->
             ComposeView(env.themedContext).apply {
                 setViewCompositionStrategy(ViewCompositionStrategy.DisposeOnViewTreeLifecycleDestroyed)
                 setContent { content(slot) }
@@ -175,6 +179,7 @@ object LawnchairDrawerSlotRegistry {
         val factory: (Context, ViewGroup, DrawerSlot, DrawerSlotEnv) -> View?,
         val kind: DrawerSlotKind,
         val showOnWorkTab: Boolean,
+        val headerMode: DrawerHeaderMode,
     )
 
     /** Backs the helpers. Copy-on-write snapshot, so reads from any thread are safe. */
@@ -196,6 +201,8 @@ object LawnchairDrawerSlotRegistry {
         override fun kindOf(slot: DrawerSlot) = entries[slot.type]?.kind ?: DrawerSlotKind.CONTENT
 
         override fun showOnWorkTab(slot: DrawerSlot) = entries[slot.type]?.showOnWorkTab ?: false
+
+        override fun headerMode() = entries[DrawerSlot.Type.HEADER]?.headerMode ?: DrawerHeaderMode.QUICK_RETURN
 
         override fun createView(context: Context, parent: ViewGroup, slot: DrawerSlot, env: DrawerSlotEnv): View? = entries[slot.type]?.factory?.invoke(context, parent, slot, env)
     }

@@ -20,6 +20,8 @@ class DrawerSlotVisibilityTracker(
     private val imeTop: () -> Int = { Int.MAX_VALUE },
     /** False while a header/footer change is being applied; deferred slots wait for it. */
     private val layoutSettled: () -> Boolean = { true },
+    /** Global bottom edge of a pinned header drawn over the lists, or Int.MIN_VALUE. */
+    private val coverBottom: () -> Int = { Int.MIN_VALUE },
 ) {
 
     private class Tracked(
@@ -97,12 +99,12 @@ class DrawerSlotVisibilityTracker(
                 // The placeholder reserves the slot's full height, so this is the real fraction
                 // (footer cover applied). Create the view only on a settled layout, after the
                 // condition held on consecutive passes.
-                val fraction = visibleFraction(entry.view, entry.slot.type != DrawerSlot.Type.FOOTER)
+                val fraction = visibleFraction(entry.view, entry.slot.type)
                 if (entry.trigger.onFrame(fraction, layoutSettled())) deferred.materialize()
                 needAnotherPass = needAnotherPass || entry.trigger.isPending
                 nowVisible = false
             } else {
-                nowVisible = isMostlyVisible(entry.view, entry.slot.type != DrawerSlot.Type.FOOTER)
+                nowVisible = isMostlyVisible(entry.view, entry.slot.type)
             }
             if (nowVisible != entry.visible) {
                 entry.visible = nowVisible
@@ -113,13 +115,15 @@ class DrawerSlotVisibilityTracker(
         if (needAnotherPass) rootView()?.postInvalidateOnAnimation()
     }
 
-    private fun isMostlyVisible(view: View, coveredByFooter: Boolean): Boolean = visibleFraction(view, coveredByFooter) >= MIN_VISIBLE_FRACTION
+    private fun isMostlyVisible(view: View, type: DrawerSlot.Type): Boolean = visibleFraction(view, type) >= MIN_VISIBLE_FRACTION
 
-    private fun visibleFraction(view: View, coveredByFooter: Boolean): Float {
+    private fun visibleFraction(view: View, type: DrawerSlot.Type): Float {
         if (!view.isShown || view.width <= 0 || view.height <= 0 || view.alpha <= 0f) return 0f
         if (!view.getGlobalVisibleRect(rect)) return 0f
-        val cover = combineCover(if (coveredByFooter) coverTop() else Int.MAX_VALUE, imeTop())
-        return visibleFraction(rect.top, rect.bottom, view.height, cover)
+        val cover = combineCover(if (type != DrawerSlot.Type.FOOTER) coverTop() else Int.MAX_VALUE, imeTop())
+        // The header slot itself is not covered by the header it lives in.
+        val top = if (type == DrawerSlot.Type.HEADER || type == DrawerSlot.Type.FOOTER) Int.MIN_VALUE else coverBottom()
+        return visibleFraction(rect.top, rect.bottom, view.height, cover, top)
     }
 
     private fun updateObserver() {
@@ -150,11 +154,12 @@ class DrawerSlotVisibilityTracker(
 
         /**
          * Fraction of a view of [viewHeight] that is visible between [top] and [bottom] (its visible
-         * rect), ignoring anything at or below [coverTop], which is drawn over it.
+         * rect), ignoring anything at or below [coverTop] and at or above [coverBottom] (a pinned
+         * header), which are drawn over it.
          */
-        fun visibleFraction(top: Int, bottom: Int, viewHeight: Int, coverTop: Int): Float {
+        fun visibleFraction(top: Int, bottom: Int, viewHeight: Int, coverTop: Int, coverBottom: Int = Int.MIN_VALUE): Float {
             if (viewHeight <= 0) return 0f
-            val visible = (minOf(bottom, coverTop) - top).coerceAtLeast(0)
+            val visible = (minOf(bottom, coverTop) - maxOf(top, coverBottom)).coerceAtLeast(0)
             return visible.toFloat() / viewHeight
         }
     }

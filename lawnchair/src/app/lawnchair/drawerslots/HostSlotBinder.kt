@@ -54,7 +54,8 @@ object HostSlotBinder {
         // and it is never counted for accessibility / IME launch. No highlight is drawn over ads.
         // The library owns vertical spacing: no slot is ever flush with its neighbours.
         val spacing = DrawerSlotController.get(context)?.verticalSpacingPx(slotItem.slot.type) ?: 0
-        h.frame.setPadding(0, spacing, 0, spacing)
+        // The top slot sits right under the header/list padding, which already is its gap.
+        h.frame.setPadding(0, if (slotItem.atTop) 0 else spacing, 0, spacing)
         val needsFocusStop = slotItem.kind == DrawerSlotKind.AD || !view.hasFocusable()
         h.frame.isFocusable = needsFocusStop
         h.frame.isClickable = false

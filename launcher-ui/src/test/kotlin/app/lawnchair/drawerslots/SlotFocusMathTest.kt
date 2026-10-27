@@ -64,4 +64,14 @@ class SlotFocusTargetTest {
         assertEquals(-1, SlotFocusMath.targetPosition(icons, intArrayOf(0, 0, 1), intArrayOf(0, 0, 0), 1, false, 0))
         assertEquals(-1, SlotFocusMath.targetPosition(isIcon, rowIndex, rowAppIndex, 3, true, -1))
     }
+
+    @Test
+    fun topSlotHasNothingAboveAndFindsFirstRowBelow() {
+        // [SLOT, r0c0, r0c1, r0c2, r1c0]
+        val icon = booleanArrayOf(false, true, true, true, true)
+        val row = intArrayOf(0, 0, 0, 0, 1)
+        val app = intArrayOf(0, 0, 1, 2, 0)
+        assertEquals(-1, SlotFocusMath.targetPosition(icon, row, app, 0, false, 1))
+        assertEquals(2, SlotFocusMath.targetPosition(icon, row, app, 0, true, 1))
+    }
 }

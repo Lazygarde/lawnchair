@@ -24,9 +24,70 @@ class InlineSlotPlannerTest {
 
     @Test
     fun skipsPositionsPastTheEndAndInvalidOnes() {
-        // 3 rows exist; after row 3 there is nothing left to insert before. 0 and negatives are dropped.
-        val result = InlineSlotPlanner.plan(icons, 4, listOf(0, -2, 3, 5, 2, 2))
+        // 3 rows exist; after row 3 there is nothing left to insert before. Negatives are dropped.
+        val result = InlineSlotPlanner.plan(icons, 4, listOf(-1, -2, 3, 5, 2, 2))
         assertEquals(listOf(Insertion(8, 0)), result)
+    }
+
+    @Test
+    fun positionZeroGoesBeforeTheFirstIcon() {
+        val result = InlineSlotPlanner.plan(icons, 4, listOf(2, 0, 1))
+        assertEquals(listOf(Insertion(0, 0, atTop = true), Insertion(4, 1), Insertion(8, 2)), result)
+    }
+
+    @Test
+    fun positionZeroUsesAdapterIndexOfFirstIconAndSkipsEmptyLists() {
+        // An edu card occupies adapter index 0; icons start at 1.
+        val shifted = IntArray(6) { it + 1 }
+        assertEquals(listOf(Insertion(1, 0, atTop = true)), InlineSlotPlanner.plan(shifted, 3, listOf(0)))
+        assertEquals(emptyList<Insertion>(), InlineSlotPlanner.plan(IntArray(0), 4, listOf(0)))
+        assertEquals(emptyList<Insertion>(), InlineSlotPlanner.plan(icons, 0, listOf(0)))
+    }
+
+    @Test
+    fun topSpacingOnlyDroppedWhenSlotIsTheFirstAdapterItem() {
+        assertEquals(true, InlineSlotPlanner.plan(icons, 4, listOf(0)).single().isFirstItem)
+        // After an edu card at adapter index 0: still the top slot for sections, but not the first item.
+        val afterCard = InlineSlotPlanner.plan(IntArray(6) { it + 1 }, 3, listOf(0)).single()
+        assertEquals(true, afterCard.atTop)
+        assertEquals(false, afterCard.isFirstItem)
+        assertEquals(false, InlineSlotPlanner.plan(icons, 4, listOf(1)).single().isFirstItem)
+    }
+
+    @Test
+    fun sanitizeKeepsZero() {
+        assertEquals(listOf(0, 2), InlineSlotPlanner.sanitize(listOf(2, 0, -1, 2)))
+    }
+
+    @Test
+    fun topSlotKeepsFirstSectionOnTheSlot() {
+        val insertions = InlineSlotPlanner.plan(icons, 4, listOf(0, 1))
+        // Section starting at adapter index 0 stays on the top slot; the one at 4 moves behind the second slot.
+        assertEquals(0, InlineSlotPlanner.shiftedSectionPosition(0, insertions))
+        assertEquals(2, InlineSlotPlanner.shiftedSectionPosition(1, insertions))
+        assertEquals(6, InlineSlotPlanner.shiftedSectionPosition(4, insertions))
+        // Bottom item after all icons.
+        assertEquals(12, InlineSlotPlanner.shiftedSectionPosition(10, insertions))
+    }
+
+    @Test
+    fun rowIndexStartsAtZeroAfterTopSlot() {
+        val types = MutableList(10) { "icon" }
+        InlineSlotPlanner.plan(icons, 4, listOf(0)).reversed().forEach { types.add(it.beforeIndex, "slot") }
+        assertEquals("slot", types.first())
+        var inSection = 0
+        var row = -1
+        val rows = types.map { type ->
+            if (type == "slot") {
+                inSection = 0
+                -1
+            } else {
+                if (inSection % 4 == 0) row++
+                inSection++
+                row
+            }
+        }
+        assertEquals(listOf(-1, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2), rows)
     }
 
     @Test

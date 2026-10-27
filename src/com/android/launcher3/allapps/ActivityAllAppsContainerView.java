@@ -332,6 +332,15 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
                     updateSearchResultsVisibility();
                 }
             }));
+            mHostSlots.setHeaderCoverBottom(() -> {
+                // Global bottom edge of a pinned header; list content above it is clipped
+                if (!mHeader.isHostHeaderPinned()) return Integer.MIN_VALUE;
+                RecyclerView rv = mAH.get(getCurrentPage()).mRecyclerView;
+                if (rv == null || !rv.isAttachedToWindow()) return Integer.MIN_VALUE;
+                int[] loc = new int[2];
+                rv.getLocationInWindow(loc);
+                return loc[1] + mHeader.getMaxTranslation();
+            });
             mHostSlots.setListScrolled(() -> {
                 RecyclerView rv = mAH.get(getCurrentPage()).mRecyclerView;
                 return rv != null && rv.computeVerticalScrollOffset() > 0;
@@ -943,6 +952,8 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         // Keep personal/work tabs visible when search is off; only hide the empty header shell.
         mHeader.setVisibility(isHeaderShellHidden() ? View.GONE : View.VISIBLE);
         boolean tabsHidden = !mUsingTabs;
+        // LC: PINNED host header keeps the header expanded and clips the lists below it
+        mHeader.setHostHeaderPinned(mHostSlots != null && mHostSlots.isHeaderPinned());
         mHeader.setup(
                 mAH.get(AdapterHolder.MAIN).mRecyclerView,
                 mAH.get(AdapterHolder.WORK).mRecyclerView,

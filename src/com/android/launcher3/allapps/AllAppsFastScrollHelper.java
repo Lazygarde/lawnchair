@@ -54,7 +54,10 @@ public class AllAppsFastScrollHelper {
 
 
     private void setLastHolderSelected(boolean isSelected) {
-        if (mLastSelectedViewHolder != null) {
+        // LC: host slots are never highlighted/pinned by fast scroll
+        if (mLastSelectedViewHolder != null
+                && mLastSelectedViewHolder.getItemViewType()
+                        != BaseAllAppsAdapter.VIEW_TYPE_HOST_SLOT) {
             mLastSelectedViewHolder.itemView.setActivated(isSelected);
             mLastSelectedViewHolder.setIsRecyclable(!isSelected);
         }

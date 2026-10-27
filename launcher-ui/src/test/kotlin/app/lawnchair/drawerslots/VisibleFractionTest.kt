@@ -56,4 +56,14 @@ class VisibleFractionTest {
         val floating = DrawerSlotVisibilityTracker.combineCover(Int.MAX_VALUE, DrawerSlotVisibilityTracker.imeTopOf(2280, 0))
         assertEquals(1f, visibleFraction(1500, 2187, 687, floating), 0.001f)
     }
+
+    @Test
+    fun pinnedHeaderCoversTheTop() {
+        // View 200..300 (100px); header bottom at 250 hides its upper half.
+        assertEquals(0.5f, DrawerSlotVisibilityTracker.visibleFraction(200, 300, 100, Int.MAX_VALUE, 250), 0.001f)
+        // Entirely under the header.
+        assertEquals(0f, DrawerSlotVisibilityTracker.visibleFraction(200, 300, 100, Int.MAX_VALUE, 400), 0.001f)
+        // No header: unchanged.
+        assertEquals(1f, DrawerSlotVisibilityTracker.visibleFraction(200, 300, 100, Int.MAX_VALUE), 0.001f)
+    }
 }

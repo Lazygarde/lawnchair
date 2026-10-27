@@ -12,7 +12,8 @@ import com.android.systemui.plugins.AllAppsRow
  * through the existing [AllAppsRow] mechanism. It always exists while slots are enabled and has
  * height 0 until a view is available, so a provider registered late still works.
  * It is hidden (height 0) on the work tab unless the slot is CONTENT and its provider allows it,
- * and, like the whole header, while searching.
+ * and, like the whole header, while searching. In [DrawerHeaderMode.PINNED] the drawer keeps it
+ * expanded under the search bar and clips the list at its bottom edge.
  */
 internal class HostSlotHeaderRow(private val controller: DrawerSlotController) : AllAppsRow {
 
@@ -36,6 +37,12 @@ internal class HostSlotHeaderRow(private val controller: DrawerSlotController) :
      * shows the header shell.
      */
     val hasContent: Boolean get() = slotView != null && pageAllowed
+
+    // Mode of the provider that created the view; read in refresh().
+    private var pinnedMode = false
+
+    /** True while the header has content with a height on this page and its provider asked for [DrawerHeaderMode.PINNED]. */
+    val isPinned: Boolean get() = hasContent && pinnedMode && effectiveHeight > 0
 
     init {
         refresh()
@@ -82,6 +89,7 @@ internal class HostSlotHeaderRow(private val controller: DrawerSlotController) :
         val c = container
         val view = controller.obtainView(DrawerSlot.Header)
         val hadContent = hasContent
+        val wasPinned = isPinned
         if (view !== slotView) {
             slotView?.let { controller.tracker.untrack(DrawerSlot.Header) }
             c.removeAllViews()
@@ -104,11 +112,12 @@ internal class HostSlotHeaderRow(private val controller: DrawerSlotController) :
         } else {
             ViewGroup.FOCUS_AFTER_DESCENDANTS
         }
+        pinnedMode = view != null && controller.headerMode() == DrawerHeaderMode.PINNED
         pageAllowed = computeAllowed()
         view?.visibility = if (pageAllowed) View.VISIBLE else View.GONE
         if (view == null) setHeight(0)
         c.requestLayout()
-        if (hadContent != hasContent) {
+        if (hadContent != hasContent || wasPinned != isPinned) {
             // The drawer decides whether to show the header shell from this; let it re-evaluate.
             controller.headerChangeScheduled()
             c.post {
@@ -148,6 +157,7 @@ internal class HostSlotHeaderRow(private val controller: DrawerSlotController) :
         controller.tracker.untrack(DrawerSlot.Header)
         container.removeAllViews()
         slotView = null
+        pinnedMode = false
         contentHeight = 0
         listener = null
     }

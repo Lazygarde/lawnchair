@@ -34,6 +34,15 @@ interface LawnchairDrawerSlotProvider {
     fun showOnWorkTab(slot: DrawerSlot): Boolean = false
 
     /**
+     * How the header slot behaves while the app list scrolls; read from the provider serving
+     * [DrawerSlot.Type.HEADER] when the header is (re)built, so a change takes effect after
+     * [LawnchairDrawerSlotRegistry.notifySlotsChanged] or launcher recreation. Default:
+     * [DrawerHeaderMode.QUICK_RETURN]. [DrawerHeaderMode.PINNED] only applies while the header has
+     * content on the current page (it is hidden on the work tab unless [showOnWorkTab] allows it).
+     */
+    fun headerMode(): DrawerHeaderMode = DrawerHeaderMode.QUICK_RETURN
+
+    /**
      * Opt-in for [DrawerSlot.Type.INLINE] and [DrawerSlot.Type.SEARCH] slots (ignored for header and
      * footer): when true the library reserves the slot but calls [createView] only the first time
      * the slot is at least 50% on screen while the drawer is open, and then attaches the view.
@@ -61,7 +70,12 @@ interface LawnchairDrawerSlotProvider {
 
     /**
      * Item positions (counted in app rows, before any slot is inserted) after which an inline
-     * row is placed. [appRowCount] is the number of app rows in the list. Used by inline slots.
+     * row is placed: 1 puts a slot after the first app row, 2 after the second, and so on; 0 puts
+     * it at the very top of the scrolling list, before the first app row (below the floating
+     * header; it scrolls with the list). Negative and duplicate values are ignored, and positions
+     * at or past the end of the list insert nothing. [appRowCount] is the number of app rows in
+     * the list. Used by inline slots. [DrawerSlot.Inline.index] is the index in this list after
+     * sorting and removing duplicates.
      */
     fun inlineRowPositions(appRowCount: Int): List<Int> = emptyList()
 

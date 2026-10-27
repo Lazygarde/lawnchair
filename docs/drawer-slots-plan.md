@@ -285,3 +285,9 @@ Mỗi phase là một commit riêng và có thể phát hành độc lập dư�
 - Ads phải có nhãn "Ad" / "Quảng cáo" rõ ràng.
 - Ads đặt sát icon app dễ gây click nhầm; giữ khoảng cách/padding hợp lý.
 - Cần tự kiểm tra lại chính sách vị trí đặt ads của AdMob/Google Play cho app launcher trước khi phát hành.
+
+## Bổ sung: header PINNED và slot inline vị trí 0
+
+- `DrawerHeaderMode { QUICK_RETURN, PINNED }` qua `LawnchairDrawerSlotProvider.headerMode()` (hoặc tham số `headerMode` của các helper). `QUICK_RETURN` giữ nguyên hành vi cũ. `PINNED`: `FloatingHeaderView` không thu gọn/không translate hàng header, list bị clip ngay dưới header (`mRVClip.top = getMaxTranslation()`, bằng padding top của list); tắt khi đang search (`mFloatingRowsCollapsed`) hoặc header không có nội dung. Visibility tracker bỏ phần slot nằm dưới header pinned. Việc hoãn thay đổi chiều cao header khi list đang cuộn giữ nguyên (tránh nhảy scroll).
+- Header PINNED + banner footer = hai ads cùng lúc; thư viện không chặn, host quyết định.
+- `inlineRowPositions` chấp nhận `0` = đầu danh sách cuộn (trước hàng app đầu tiên, dưới header). Section fast-scroller đầu tiên vẫn trỏ vào slot; slot đầu không có spacing trên (padding của list đã tạo khoảng cách); không bao giờ nằm trong private space (chỉ tính icon trước private space header).

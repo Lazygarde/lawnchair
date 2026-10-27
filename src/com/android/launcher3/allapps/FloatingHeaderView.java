@@ -98,6 +98,9 @@ public class FloatingHeaderView extends LinearLayout implements
     private AllAppsRecyclerView mCurrentRV;
     protected int mSnappedScrolledY;
     private int mTranslationY;
+    // LC: host header slot in PINNED mode: rows never collapse or translate, the lists are clipped
+    // below the header (see isHostHeaderPinned)
+    private boolean mHostHeaderPinned;
 
     private boolean mForwardToRecyclerView;
 
@@ -313,6 +316,12 @@ public class FloatingHeaderView extends LinearLayout implements
     }
 
     private void moved(final int currentScrollY) {
+        if (isHostHeaderPinned()) { // LC
+            mHeaderCollapsed = false;
+            mTranslationY = 0;
+            mSnappedScrolledY = -mMaxTranslation;
+            return;
+        }
         if (mHeaderCollapsed) {
             if (currentScrollY <= mSnappedScrolledY) {
                 if (canSnapAt(currentScrollY)) {
@@ -337,11 +346,18 @@ public class FloatingHeaderView extends LinearLayout implements
     }
 
     protected void applyVerticalMove() {
+        final boolean pinned = isHostHeaderPinned(); // LC
+        if (pinned) {
+            mTranslationY = 0;
+        }
         int maxTranslation = mMaxTranslation - mCurrentRV.getSavedScrollPosition();
         int uncappedTranslationY = mTranslationY;
-        mTranslationY = Math.max(mTranslationY, -maxTranslation);
+        if (!pinned) { // LC
+            mTranslationY = Math.max(mTranslationY, -maxTranslation);
+        }
 
-        if (mFloatingRowsCollapsed || uncappedTranslationY < mTranslationY - getPaddingTop()) {
+        if (!pinned && (mFloatingRowsCollapsed
+                || uncappedTranslationY < mTranslationY - getPaddingTop())) {
             // we hide it completely if already capped (for opening search anim)
             for (FloatingHeaderRow row : mAllRows) {
                 row.setVerticalScroll(0, true /* isScrolledOut */);
@@ -360,6 +376,10 @@ public class FloatingHeaderView extends LinearLayout implements
             clipTop += mTabsAdditionalPaddingTop;
         }
         mRVClip.top = mTabsHidden || mFloatingRowsCollapsed ? clipTop : 0;
+        if (pinned) {
+            // LC: the lists start below the header; never draw them behind its content
+            mRVClip.top = getMaxTranslation();
+        }
         mHeaderClip.top = clipTop;
         // clipping on a draw might cause additional redraw
         setClipBounds(mHeaderClip);
@@ -393,6 +413,20 @@ public class FloatingHeaderView extends LinearLayout implements
         if (mSearchRV != null) {
             mSearchRV.setClipBounds(mRVClip);
         }
+    }
+
+    /**
+     * LC: keeps the header rows (the host header slot) fully expanded under the search bar
+     * regardless of list scroll, clipping the lists at the header's bottom edge. Ignored while the
+     * rows are collapsed (search). Takes effect on the next {@link #setup} / {@link #reset}.
+     */
+    public void setHostHeaderPinned(boolean pinned) {
+        mHostHeaderPinned = pinned;
+    }
+
+    /** LC: whether the header is currently pinned (see {@link #setHostHeaderPinned}). */
+    public boolean isHostHeaderPinned() {
+        return mHostHeaderPinned && !mFloatingRowsCollapsed;
     }
 
     /**
@@ -485,6 +519,17 @@ public class FloatingHeaderView extends LinearLayout implements
             } finally {
                 event.offsetLocation(-mTempOffset.x, -mTempOffset.y);
             }
+        } else if (isHostHeaderPinned()) {
+            // LC: pinned header sits over clipped list rows; never let touches reach them. Drags
+            // still scroll the list.
+            calcOffset(mTempOffset);
+            event.offsetLocation(mTempOffset.x, mTempOffset.y);
+            try {
+                mCurrentRV.onTouchEvent(event);
+            } finally {
+                event.offsetLocation(-mTempOffset.x, -mTempOffset.y);
+            }
+            return true;
         } else {
             return super.onTouchEvent(event);
         }

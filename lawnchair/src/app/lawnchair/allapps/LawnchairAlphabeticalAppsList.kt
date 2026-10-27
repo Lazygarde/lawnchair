@@ -174,19 +174,21 @@ class LawnchairAlphabeticalAppsList<T>(
 
         val positions = provider.inlineRowPositions(InlineSlotPlanner.rowCount(icons.size, perRow))
         val inserted = mutableListOf<Pair<Int, HostSlotAdapterItem>>()
-        for ((beforeIndex, slotIndex) in InlineSlotPlanner.plan(icons, perRow, positions)) {
+        val planned = mutableListOf<InlineSlotPlanner.Insertion>()
+        for (insertion in InlineSlotPlanner.plan(icons, perRow, positions)) {
+            val (beforeIndex, slotIndex) = insertion
             val slot = DrawerSlot.Inline(slotIndex, inWorkTab = isWorkAppsList)
             if (isWorkAppsList && !(provider.kindOf(slot) == DrawerSlotKind.CONTENT && provider.showOnWorkTab(slot))) continue
             val view = controller.obtainView(slot) ?: continue
-            inserted.add(beforeIndex to HostSlotAdapterItem(slot, view, controller.kindOf(slot)))
+            inserted.add(beforeIndex to HostSlotAdapterItem(slot, view, controller.kindOf(slot), insertion.isFirstItem))
+            planned.add(insertion)
         }
         if (inserted.isEmpty()) return
 
         // Highest index first so earlier indices stay valid.
         inserted.asReversed().forEach { (index, item) -> items.add(index, item) }
-        val indices = inserted.map { it.first }
         fastScrollerSections.replaceAll { section ->
-            FastScrollSectionInfo(section.sectionName, InlineSlotPlanner.shiftedPosition(section.position, indices)).also { it.id = section.id }
+            FastScrollSectionInfo(section.sectionName, InlineSlotPlanner.shiftedSectionPosition(section.position, planned)).also { it.id = section.id }
         }
     }
 

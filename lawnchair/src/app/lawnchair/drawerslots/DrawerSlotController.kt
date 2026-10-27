@@ -15,6 +15,7 @@ import com.android.launcher3.util.Themes
 import com.android.systemui.plugins.AllAppsRow
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.function.BooleanSupplier
+import java.util.function.IntSupplier
 import kotlinx.coroutines.launch
 
 /**
@@ -79,6 +80,7 @@ class DrawerSlotController(private val launcher: LawnchairLauncher) {
             DrawerSlotVisibilityTracker.imeTopOf(launcher.window?.decorView?.height ?: 0, imeInsetBottom)
         },
         layoutSettled = { isLayoutSettled() },
+        coverBottom = { headerCoverBottom?.asInt ?: Int.MIN_VALUE },
     )
 
     /** Set by the drawer; invoked (main thread) when a header slot view appears or disappears. */
@@ -148,6 +150,23 @@ class DrawerSlotController(private val launcher: LawnchairLauncher) {
         if (!isEnabled) return emptyList()
         headerRow?.destroy()
         return listOf(HostSlotHeaderRow(this).also { headerRow = it })
+    }
+
+    /** Header mode of the provider that created the header view; QUICK_RETURN without one. */
+    internal fun headerMode(): DrawerHeaderMode = cache.providerOf(DrawerSlot.Header)?.headerMode() ?: DrawerHeaderMode.QUICK_RETURN
+
+    /** True while the header slot has content on this page and its provider asked for [DrawerHeaderMode.PINNED]. */
+    fun isHeaderPinned(): Boolean = headerRow?.isPinned == true
+
+    /**
+     * Set by the drawer: global bottom edge of the pinned header (list content above it is
+     * clipped), or Int.MIN_VALUE when nothing is pinned.
+     */
+    var headerCoverBottom: IntSupplier? = null
+        private set
+
+    fun setHeaderCoverBottom(supplier: IntSupplier?) {
+        headerCoverBottom = supplier
     }
 
     /** Whether a header slot view exists (and may show on the current page) (the header shell must then stay visible so it can be laid out). */
@@ -388,6 +407,7 @@ class DrawerSlotController(private val launcher: LawnchairLauncher) {
         headerRow = null
         footer = null
         headerPresenceListener = null
+        headerCoverBottom = null
         cache.clear()
         engagedProviders.toList().forEach { it.onDestroy() }
         engagedProviders.clear()

@@ -11,6 +11,8 @@ class HostSlotAdapterItem(
     val slot: DrawerSlot,
     val view: View,
     val kind: DrawerSlotKind,
+    /** First item of the list (inline position 0): no top spacing. */
+    val atTop: Boolean = false,
 ) : BaseAllAppsAdapter.AdapterItem(BaseAllAppsAdapter.VIEW_TYPE_HOST_SLOT) {
 
     override fun isCountedForAccessibility(): Boolean = false
@@ -18,5 +20,5 @@ class HostSlotAdapterItem(
     override fun isSameAs(other: BaseAllAppsAdapter.AdapterItem): Boolean = other is HostSlotAdapterItem && other.slot.key == slot.key
 
     /** Changed when the kind changed or the view was recreated, so the holder rebinds. */
-    override fun isContentSame(other: BaseAllAppsAdapter.AdapterItem): Boolean = other is HostSlotAdapterItem && other.kind == kind && other.view === view
+    override fun isContentSame(other: BaseAllAppsAdapter.AdapterItem): Boolean = other is HostSlotAdapterItem && other.kind == kind && other.atTop == atTop && other.view === view
 }

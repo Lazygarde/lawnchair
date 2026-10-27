@@ -12,9 +12,9 @@ A **slot** is a place in the drawer where a view of yours can appear:
 
 | Slot type | Where it is | Notes |
 |---|---|---|
-| `HEADER` | Right under the drawer search bar, inside the header that collapses when the list scrolls | Hidden while a search is active |
+| `HEADER` | Right under the drawer search bar, inside the floating header | Quick-return by default, or pinned (`headerMode()`); hidden while a search is active |
 | `FOOTER` | Pinned to the bottom of the drawer, above the navigation bar | Hidden while searching, while the keyboard is open and on the Work tab |
-| `INLINE` | A full-width row between the rows of the app grid | Inserted at row boundaries you choose |
+| `INLINE` | A full-width row between the rows of the app grid, or at the very top of the list (position 0) | Inserted at row boundaries you choose |
 | `SEARCH` | A full-width item inside search results | Inserted after a result group, after a debounce |
 
 Each slot has a **kind**, which you declare per slot (`LawnchairDrawerSlotProvider.kindOf`):
@@ -141,7 +141,7 @@ LawnchairDrawerSlotRegistry.registerFactory(DrawerSlot.Type.FOOTER) { context, p
 }
 ```
 
-All three accept `kind` (pass `DrawerSlotKind.AD` for ads) and `showOnWorkTab`. Calling a helper again for another type adds to the same internal provider. The helpers do not support `deferUntilVisible`, `inlineRowPositions` or `searchItemCount`; implement a provider for those.
+All three accept `kind` (pass `DrawerSlotKind.AD` for ads), `showOnWorkTab` and `headerMode` (only used for `HEADER`). Calling a helper again for another type adds to the same internal provider. The helpers do not support `deferUntilVisible`, `inlineRowPositions` or `searchItemCount`; implement a provider for those.
 
 ---
 
@@ -357,13 +357,19 @@ All callbacks run on the main thread.
 - The footer is hidden on the Work tab for both kinds, because the work profile's pause bar uses the same bottom edge.
 
 ### Header and footer
-- The header is hidden while a search is active (the whole header is hidden by the drawer). It collapses with the list on scroll. If you register your provider late, the header row still picks it up.
+- The header is hidden while a search is active (the whole header is hidden by the drawer). If you register your provider late, the header row still picks it up.
+- **Header modes** (`LawnchairDrawerSlotProvider.headerMode()`, or the `headerMode` parameter of `registerView` / `registerFactory` / `setComposeContent`; read from the provider that serves `HEADER`):
+  - `DrawerHeaderMode.QUICK_RETURN` (default): the header scrolls away when the list scrolls down and slides back on any scroll up, like the drawer's other header rows.
+  - `DrawerHeaderMode.PINNED`: while the header has content on the current page it stays fully expanded right under the search bar, whatever the list scroll. The list scrolls underneath and is clipped at the header's bottom edge, so icons never draw behind the header content. The first row still starts right below the header. With no content (no view, height 0, or hidden on the Work tab) nothing changes. Search hides the header as usual and restores it afterwards.
+  - A mode change takes effect after `notifySlotsChanged()` or launcher recreation (not animated).
 - The footer is hidden while searching, while the keyboard is open, and on the Work tab. List content is clipped at its top.
 - Changes to the header height (for example an ad that loads late) are deferred while the drawer is open and the list is scrolled, so the list does not jump to the top; they apply when the drawer closes.
 
 ### Inline placement
 - `inlineRowPositions(appRowCount)` returns "after app row N" positions. `appRowCount` counts icon and folder rows before any slot is inserted.
-- Values below 1 are ignored, duplicates are removed, positions at or past the last row are skipped. Slot indices follow the sorted list.
+- Values below 0 are ignored, duplicates are removed, positions at or past the last row are skipped. Slot indices follow the sorted list.
+- **Behavior change:** position 0 used to be ignored; it now inserts a slot at the top of the list. Hosts that returned 0 by mistake will start showing a slot there.
+- **Position 0** puts the slot at the very top of the scrolling list: it is the first item, right below the floating header, and scrolls with the list. It gets no extra top spacing (the list's top padding already separates it from the header); the spacing below it is the usual inline spacing. The fast scroller's first section still points at it. It is never placed inside the private space section.
 - Slots go only at row boundaries, never in search results, and never inside the private space section. Both the automatic category mode and the folder drawer mode are supported.
 - A slot whose `createView` returns `null` is not inserted.
 
@@ -387,6 +393,7 @@ All callbacks run on the main thread.
 - **Give a correct `estimatedHeightPx`** for fixed-size ads (a 300x250 MREC is 250dp). A wrong estimate makes the placeholder look mostly visible while the real view would be mostly covered, and the view is created too early. The real height is remembered for the process after the first measurement; without any estimate one app row is used. If the real view is taller than the estimate, the content below moves once.
 - The lightweight alternative that needs no estimate: return a small container from `createView` and only load or attach the real ad in the first `onSlotVisible` for that slot.
 - `deferUntilVisible` applies to `INLINE` and `SEARCH` only; header and footer ignore it.
+- **Pinned header plus footer banner means two ads on screen at once.** A `PINNED` ad header and a footer ad are visible together at all times; the library does not prevent it, the host decides whether that fits its ad policy and layout. The same applies to a top inline slot (position 0) under an ad header.
 - **Spacing guidance**: keep at least 3 app rows between inline ads, do not put an inline ad right under a header ad (make the first row apps), and be careful combining an MREC with a footer banner on small screens.
 - **Labeling**: ads must carry a clear "Ad" / "Sponsored" label. Check the AdMob and Google Play placement policies for launchers before release.
 - A visibility callback is not a billing event. Always follow your ad SDK's own impression rules.
@@ -433,7 +440,8 @@ interface LawnchairDrawerSlotProvider {
     fun showOnWorkTab(slot: DrawerSlot): Boolean = false
     fun deferUntilVisible(slot: DrawerSlot): Boolean = false            // INLINE / SEARCH only
     fun estimatedHeightPx(slot: DrawerSlot, env: DrawerSlotEnv): Int = 0 // 0 = unknown
-    fun inlineRowPositions(appRowCount: Int): List<Int> = emptyList()
+    fun inlineRowPositions(appRowCount: Int): List<Int> = emptyList()   // 0 = top of the list
+    fun headerMode(): DrawerHeaderMode = DrawerHeaderMode.QUICK_RETURN  // QUICK_RETURN | PINNED
     fun createView(context: Context, parent: ViewGroup, slot: DrawerSlot, env: DrawerSlotEnv): View?
     fun onSlotRemoved(slot: DrawerSlot) {}
     suspend fun searchItemCount(query: String): Int = 0
@@ -448,11 +456,12 @@ object LawnchairDrawerSlotRegistry {
     fun registerProvider(provider: LawnchairDrawerSlotProvider)
     fun registerProvider(type: DrawerSlot.Type, provider: LawnchairDrawerSlotProvider)
     fun registerView(@LayoutRes layoutResId: Int, vararg types: DrawerSlot.Type = HEADER + FOOTER,
-        kind: DrawerSlotKind = CONTENT, showOnWorkTab: Boolean = false, onViewBound: ((DrawerSlot, View) -> Unit)? = null)
+        kind: DrawerSlotKind = CONTENT, showOnWorkTab: Boolean = false,
+        headerMode: DrawerHeaderMode = QUICK_RETURN, onViewBound: ((DrawerSlot, View) -> Unit)? = null)
     fun registerFactory(vararg types: DrawerSlot.Type, kind: DrawerSlotKind = CONTENT,
-        showOnWorkTab: Boolean = false, factory: (Context, ViewGroup, DrawerSlot, DrawerSlotEnv) -> View?)
+        showOnWorkTab: Boolean = false, headerMode: DrawerHeaderMode = QUICK_RETURN, factory: (Context, ViewGroup, DrawerSlot, DrawerSlotEnv) -> View?)
     fun setComposeContent(vararg types: DrawerSlot.Type, kind: DrawerSlotKind = CONTENT,
-        showOnWorkTab: Boolean = false, content: @Composable (DrawerSlot) -> Unit)
+        showOnWorkTab: Boolean = false, headerMode: DrawerHeaderMode = QUICK_RETURN, content: @Composable (DrawerSlot) -> Unit)
     fun notifySlotsChanged(type: DrawerSlot.Type? = null)   // any thread; drops cached views, re-creates
     fun clear()
     fun clear(type: DrawerSlot.Type)
