@@ -30,6 +30,12 @@
     <bool name="config_enable_custom_overlay" translatable="false">true</bool>
 
     <!--
+      Whether to show the built-in AI Cleaner minus-one dashboard when no host overlay provider
+      is registered in LawnchairOverlayRegistry.
+    -->
+    <bool name="config_enable_ai_cleaner_minus_one" translatable="false">true</bool>
+
+    <!--
       Master switch for host-provided slots (ads or regular content) in the app drawer. Even when true, nothing is shown until a
       provider is registered in LawnchairDrawerSlotRegistry and it enables the slot type.
     -->

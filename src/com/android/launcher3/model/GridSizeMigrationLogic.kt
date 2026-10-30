@@ -516,7 +516,8 @@ class GridSizeMigrationLogic {
 
         val next: Point =
             if (screenId == 0 && prefs2.enableSmartspace.firstCached()) {
-                Point(0, 1 /* smartspace */)
+                val smartspaceRows = prefs2.smartspaceMode.firstCached().spanY.coerceAtMost(maxOf(1, trgY))
+                Point(0, smartspaceRows /* smartspace */)
             } else {
                 Point(0, 0)
             }

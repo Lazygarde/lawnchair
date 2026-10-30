@@ -101,11 +101,15 @@ public class AllAppsState extends LauncherState {
 
     @Override
     public ScrimColors getWorkspaceScrimColor(Launcher launcher) {
-        return new ScrimColors(
-                /* backgroundColor */ launcher.getDeviceProfile().getDeviceProperties().isTablet()
-                ? LawnchairUtilsKt.getAllAppsBackgroundColor(launcher, 
-                        ColorTokens.WidgetsPickerScrim.resolveColor(launcher))
-                : ColorTokens.AllAppsScrimColor.resolveColor(launcher),
-                /* foregroundColor */ Color.TRANSPARENT);
+        int backgroundColor;
+        if (!launcher.getDeviceProfile().shouldShowAllAppsOnSheet()) {
+            backgroundColor = ColorTokens.AllAppsScrimColor.resolveColor(launcher);
+        } else if (!Flags.allAppsBlur() || !launcher.isAllAppsBackgroundBlurEnabled()) {
+            backgroundColor = LawnchairUtilsKt.getAllAppsBackgroundColor(launcher, 
+                    ColorTokens.WidgetsPickerScrim.resolveColor(launcher));
+        } else {
+            backgroundColor = Color.TRANSPARENT;
+        }
+        return new ScrimColors(backgroundColor, /* foregroundColor */ Color.TRANSPARENT);
     }
 }

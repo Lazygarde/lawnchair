@@ -76,4 +76,3 @@ class FallbackSearchInputView(context: Context, attrs: AttributeSet?) : Extended
         }
     }
 }
-

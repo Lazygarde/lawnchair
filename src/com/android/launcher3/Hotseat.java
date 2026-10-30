@@ -202,7 +202,10 @@ public class Hotseat extends FrameLayout implements Insettable {
     }
 
     private void setUpBackground() {
-        if(!preferenceManager.getHotseatBG().get()) return;
+        if (!preferenceManager.getHotseatBG().get()) {
+            setBackground(null);
+            return;
+        }
 
         var bgColor = PreferenceCacheExtensionsKt.firstCached(preferenceManager2.getHotseatBackgroundColor());
         var transparency = preferenceManager.getHotseatBGAlpha().get();
@@ -213,15 +216,26 @@ public class Hotseat extends FrameLayout implements Insettable {
         int insetHorizontalRight = preferenceManager.getHotseatBGHorizontalInsetRight().get();
         int insetVerticalTop = preferenceManager.getHotseatBGVerticalInsetTop().get();
         int insetVerticalBottom = preferenceManager.getHotseatBGVerticalInsetBottom().get();
+        DeviceProfile dp = mActivity.getDeviceProfile();
+        if (!dp.isVerticalBarLayout()) {
+            int glassInset = dp.getHotseatGlassVerticalInsetPx(getContext());
+            insetVerticalTop += getPaddingTop() + glassInset;
+            insetVerticalBottom += getPaddingBottom() + glassInset;
+        }
         float cornerRadiusDp = PreferenceCacheExtensionsKt.firstCached(
                 preferenceManager2.getHotseatBackgroundCornerRadius());
         float cornerRadius = TypedValue.applyDimension(
                 TypedValue.COMPLEX_UNIT_DIP,
                 cornerRadiusDp,
                 getResources().getDisplayMetrics());
+        int strokeWidthPx = Math.max(1, Math.round(TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                1f,
+                getResources().getDisplayMetrics())));
         GradientDrawable background = new GradientDrawable();
         background.setColor(finalColor);
         background.setCornerRadius(cornerRadius);
+        background.setStroke(strokeWidthPx, 0x26FFFFFF);
         InsetDrawable bg = new InsetDrawable(background,
                 insetHorizontalLeft, insetVerticalTop, insetHorizontalRight, insetVerticalBottom);
         setBackground(bg);
@@ -424,6 +438,7 @@ public class Hotseat extends FrameLayout implements Insettable {
 
         Rect padding = grid.getHotseatLayoutPadding(getContext());
         setPadding(padding.left, padding.top, padding.right, padding.bottom);
+        setUpBackground();
         setLayoutParams(lp);
         InsettableFrameLayout.dispatchInsets(this, insets);
     }

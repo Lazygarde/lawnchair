@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<app.lawnchair.aicleaner.AiCleanerHomeHeaderView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/search_container_workspace"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipChildren="false"
+    android:clipToPadding="false"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:paddingStart="4dp"
+    android:paddingEnd="4dp">
+
+    <FrameLayout
+        android:id="@+id/ai_cleaner_clock_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@drawable/bg_ai_cleaner_clock_card"
+        android:minHeight="96dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="center_vertical"
+            android:minHeight="96dp"
+            android:orientation="horizontal"
+            android:paddingStart="14dp"
+            android:paddingTop="10dp"
+            android:paddingEnd="14dp"
+            android:paddingBottom="10dp">
+
+            <LinearLayout
+                android:id="@+id/ll_clock_section"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1.15"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:orientation="vertical">
+
+                <TextClock
+                    android:id="@+id/tc_time"
+                    android:layout_width="match_parent"
+                    android:layout_height="50dp"
+                    android:autoSizeMaxTextSize="44sp"
+                    android:autoSizeMinTextSize="26sp"
+                    android:autoSizeStepGranularity="1sp"
+                    android:autoSizeTextType="uniform"
+                    android:fontFamily="sans-serif-medium"
+                    android:format12Hour="HH:mm"
+                    android:format24Hour="HH:mm"
+                    android:gravity="center"
+                    android:includeFontPadding="false"
+                    android:maxLines="1"
+                    android:shadowColor="#4D000000"
+                    android:shadowDx="1"
+                    android:shadowDy="2"
+                    android:shadowRadius="4"
+                    android:textColor="#FFFFFFFF"
+                    android:textSize="42sp" />
+
+                <TextClock
+                    android:id="@+id/tc_date"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif"
+                    android:format12Hour="EEE , MMM dd"
+                    android:format24Hour="EEE , MMM dd"
+                    android:maxLines="1"
+                    android:textColor="#E6FFFFFF"
+                    android:textSize="13sp" />
+            </LinearLayout>
+
+            <View
+                android:layout_width="1dp"
+                android:layout_height="56dp"
+                android:background="#26FFFFFF" />
+
+            <LinearLayout
+                android:id="@+id/ll_weather_section"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="12dp"
+                android:layout_weight="0.85"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="start|center_vertical"
+                android:orientation="vertical">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:orientation="horizontal">
+
+                    <ImageView
+                        android:id="@+id/iv_weather_icon"
+                        android:layout_width="28dp"
+                        android:layout_height="28dp"
+                        android:contentDescription="@null"
+                        android:src="@drawable/ic_ai_cleaner_weather_sun" />
+
+                    <TextView
+                        android:id="@+id/tv_temperature"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="6dp"
+                        android:fontFamily="sans-serif-medium"
+                        android:maxLines="1"
+                        android:text="28°C"
+                        android:textColor="#FFFFFFFF"
+                        android:textSize="22sp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/tv_weather_condition"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="2dp"
+                    android:layout_marginTop="2dp"
+                    android:ellipsize="end"
+                    android:fontFamily="sans-serif"
+                    android:maxLines="1"
+                    android:text="Sunny"
+                    android:textColor="#E6FFFFFF"
+                    android:textSize="13sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </FrameLayout>
+
+    <FrameLayout
+        android:id="@+id/ai_cleaner_search_card"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="12dp"
+        android:background="@drawable/bg_ai_cleaner_google_search_bar"
+        android:clickable="true"
+        android:elevation="3dp"
+        android:focusable="true">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp">
+
+            <ImageView
+                android:id="@+id/iv_google_logo"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="@string/label_search"
+                android:focusable="true"
+                android:padding="1dp"
+                android:src="@drawable/ic_super_g_color" />
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <ImageView
+                android:id="@+id/iv_mic"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="@string/label_voice_search"
+                android:focusable="true"
+                android:padding="1dp"
+                android:src="@drawable/ic_mic_flat"
+                android:tint="#5F6368" />
+
+            <ImageView
+                android:id="@+id/iv_lens"
+                android:layout_width="22dp"
+                android:layout_height="22dp"
+                android:layout_marginStart="14dp"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:clickable="true"
+                android:contentDescription="@string/label_lens"
+                android:focusable="true"
+                android:padding="1dp"
+                android:src="@drawable/ic_lens"
+                android:tint="#5F6368" />
+        </LinearLayout>
+    </FrameLayout>
+
+</app.lawnchair.aicleaner.AiCleanerHomeHeaderView>
+

@@ -330,6 +330,8 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
         mDotParams = new DotRenderer.DrawParams();
 
         setEllipsize(TruncateAt.END);
+        setSingleLine(false);
+        setMaxLines(2);
         setAccessibilityDelegate(mActivity.getAccessibilityDelegate());
         setTextAlpha(1f);
     }
@@ -378,7 +380,9 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
         setAlpha(1);
         setReorderBounceScale(1f);
         setTranslationY(0);
-        setMaxLines(1);
+        setSingleLine(false);
+        setMaxLines(2);
+        setEllipsize(TruncateAt.END);
         setVisibility(VISIBLE);
 
         // Lawnchair: Icon swipe gesture feature
@@ -589,15 +593,12 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
      * Only if actual text can be displayed in two line, the {@code true} value will be effective.
      */
     protected boolean shouldUseTwoLine() {
-        // For all apps and search UI, respect user selection in home settings. Note that all apps
-        // cell spec can declare support for two line labels, but it's used primarily to decide
-        // whether the BubbleTextView height needs to be increased to accommodate an extra line of
-        // text.
         if (mDisplay == DISPLAY_ALL_APPS || mDisplay == DISPLAY_PREDICTION_ROW) {
-            return mDeviceProfile.inv.enableTwoLinesInAllApps;
+            return true;
         }
-
-        // Otherwise, show two lines if the cell declares it can fit two line label.
+        if (mDisplay == DISPLAY_WORKSPACE || mDisplay == DISPLAY_FOLDER) {
+            return true;
+        }
         return getCellSpecMaxTextLineCount() == 2;
     }
 
@@ -606,6 +607,9 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
      * declared it can support.
      */
     private int getCellSpecMaxTextLineCount() {
+        if (shouldUseTwoLine()) {
+            return 2;
+        }
         if (!enableScalabilityForDesktopExperience()) {
             return 1;
         }
@@ -631,6 +635,9 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
             mLastOriginalText = label;
             mLastModifiedText = mLastOriginalText;
             mBreakPointsIntArray = StringMatcherUtility.getListOfBreakpoints(label, MATCHER);
+            setSingleLine(false);
+            setMaxLines(2);
+            setEllipsize(TruncateAt.END);
             if (Flags.useNewIconForArchivedApps()
                     && info instanceof ItemInfoWithIcon infoWithIcon
                     && infoWithIcon.isInactiveArchive()) {
@@ -1091,39 +1098,9 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
                     mAppTitleHorizontalPadding + mRoundRectPadding,
                     getPaddingBottom());
         }
-        // Only apply two line for all_apps and device search only if necessary.
-        if (shouldUseTwoLine() && (mLastOriginalText != null)) {
-            int allowedVerticalSpace = height - getPaddingTop() - getPaddingBottom()
-                    - mDeviceProfile.getAllAppsProfile().getIconSizePx()
-                    - mDeviceProfile.getAllAppsProfile().getIconDrawablePaddingPx();
-            CharSequence modifiedString = modifyTitleToSupportMultiLine(
-                    MeasureSpec.getSize(widthMeasureSpec) - getCompoundPaddingLeft()
-                            - getCompoundPaddingRight(),
-                    allowedVerticalSpace,
-                    mLastOriginalText,
-                    getPaint(),
-                    mBreakPointsIntArray,
-                    getLineSpacingMultiplier(),
-                    getLineSpacingExtra());
-            if (!TextUtils.equals(modifiedString, mLastModifiedText)) {
-                mLastModifiedText = modifiedString;
-                if (Flags.useNewIconForArchivedApps()
-                        && getTag() instanceof ItemInfoWithIcon infoWithIcon
-                        && infoWithIcon.isInactiveArchive()) {
-                    setTextWithArchivingIcon(modifiedString);
-                } else {
-                    setText(modifiedString);
-                }
-                // if text contains NEW_LINE, set max lines to 2
-                if (TextUtils.indexOf(modifiedString, NEW_LINE) != -1) {
-                    setSingleLine(false);
-                    setMaxLines(2);
-                } else {
-                    setSingleLine(true);
-                    setMaxLines(1);
-                }
-            }
-        }
+        setSingleLine(false);
+        setMaxLines(2);
+        setEllipsize(TruncateAt.END);
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
     }
 
@@ -1292,9 +1269,9 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
                                 : EMPTY;
                     }
                     newString.append(NEW_LINE).append(lastCharacters);
-                    StaticLayout staticLayout = new StaticLayout(newString, paint, limitedWidth,
-                            ALIGN_NORMAL, spacingMultiplier, spacingExtra, false);
-                    if (staticLayout.getHeight() < limitedHeight) {
+                    Paint.FontMetrics fm = paint.getFontMetrics();
+                    float twoLineHeight = (fm.bottom - fm.top) * 2;
+                    if (twoLineHeight <= limitedHeight || limitedHeight <= 0) {
                         return newString.toString();
                     }
                 }

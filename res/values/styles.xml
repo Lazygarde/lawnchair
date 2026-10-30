@@ -397,7 +397,9 @@
 
     <!-- Base theme for BubbleTextView and sub classes -->
     <style name="BaseIcon" parent="BaseIconUnBounded">
-        <item name="android:lines">1</item>
+        <item name="android:maxLines">2</item>
+        <item name="android:singleLine">false</item>
+        <item name="android:ellipsize">end</item>
     </style>
 
     <!-- Base theme for AllApps BubbleTextViews -->
@@ -509,7 +511,7 @@
     </style>
 
     <style name="CellStyleDefault">
-        <item name="iconDrawablePadding">7dp</item>
+        <item name="iconDrawablePadding">4dp</item>
     </style>
 
     <style name="AllAppsStyleDefault">

@@ -36,13 +36,17 @@ import android.graphics.Point;
 import android.graphics.PointF;
 import android.graphics.Rect;
 import android.graphics.Typeface;
+import android.graphics.drawable.Drawable;
+import android.graphics.drawable.GradientDrawable;
 import android.os.Handler;
 import android.os.Looper;
+import android.text.TextUtils;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.annotation.LayoutRes;
 
@@ -92,7 +96,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
 
     private final int mStartDragThreshold;
 
-    private static final int SHORTCUT_COLLAPSE_THRESHOLD = 6;
+    private static final int SHORTCUT_COLLAPSE_THRESHOLD = 10;
 
     private final float mShortcutHeight;
 
@@ -126,6 +130,12 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
     @Override
     protected View getAccessibilityInitialFocusView() {
         if (mSystemShortcutContainer != null) {
+            for (int i = 0; i < mSystemShortcutContainer.getChildCount(); i++) {
+                View child = mSystemShortcutContainer.getChildAt(i);
+                if (child.getTag() instanceof SystemShortcut) {
+                    return child;
+                }
+            }
             return mSystemShortcutContainer.getChildAt(0);
         }
         return super.getAccessibilityInitialFocusView();
@@ -449,13 +459,66 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
             return;
         }
         mSystemShortcutContainer = inflateAndAdd(systemShortcutContainerLayout, this);
+        applyPopupCardBorder(mSystemShortcutContainer);
         mWidgetContainer = mSystemShortcutContainer;
+        prependAppHeaderIfNeeded(mSystemShortcutContainer);
         for (int i = 0; i < systemShortcuts.size(); i++) {
             initializeSystemShortcut(
                     systemShortcutLayout,
                     mSystemShortcutContainer,
                     systemShortcuts.get(i),
                     i < systemShortcuts.size() - 1);
+        }
+    }
+
+    private void applyPopupCardBorder(View container) {
+        if (container == null) {
+            return;
+        }
+        Drawable bg = container.getBackground();
+        if (bg instanceof GradientDrawable gd) {
+            GradientDrawable mutated = (GradientDrawable) gd.mutate();
+            int strokeColor = Utilities.isDarkTheme(getContext()) ? 0x26FFFFFF : 0x1A000000;
+            mutated.setStroke(Math.max(1, Utilities.dpToPx(1f)), strokeColor);
+        }
+    }
+
+    private void prependAppHeaderIfNeeded(ViewGroup container) {
+        if (container == null || mOriginalIcon == null) {
+            return;
+        }
+        CharSequence label = mOriginalIcon.getText();
+        if (TextUtils.isEmpty(label) && mOriginalIcon.getTag() instanceof ItemInfo info) {
+            label = info.title;
+        }
+        if (TextUtils.isEmpty(label)) {
+            return;
+        }
+        View header = inflateAndAdd(R.layout.popup_app_header, container, 0);
+        ImageView ivIcon = header.findViewById(R.id.iv_popup_app_icon);
+        TextView tvLabel = header.findViewById(R.id.tv_popup_app_label);
+        View divider = header.findViewById(R.id.popup_header_divider);
+        if (tvLabel != null) {
+            tvLabel.setText(label);
+        }
+        if (ivIcon != null) {
+            Drawable iconDrawable = mOriginalIcon.getIcon();
+            Drawable headerIcon = iconDrawable != null && iconDrawable.getConstantState() != null
+                    ? iconDrawable.getConstantState().newDrawable(getResources())
+                    : null;
+            if (headerIcon != null) {
+                ivIcon.setImageDrawable(headerIcon);
+            } else if (mOriginalIcon.getTag() instanceof ItemInfoWithIcon infoWithIcon
+                    && infoWithIcon.bitmap != null
+                    && !infoWithIcon.bitmap.isNullOrLowRes()) {
+                ivIcon.setImageBitmap(infoWithIcon.bitmap.icon);
+            } else {
+                ivIcon.setVisibility(GONE);
+            }
+        }
+        if (divider != null) {
+            divider.setBackgroundColor(
+                    Utilities.isDarkTheme(getContext()) ? 0x26FFFFFF : 0x1F000000);
         }
     }
 
@@ -491,6 +554,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
      */
     private void addDeepShortcuts(int deepShortcutCount, float currentHeight) {
         mDeepShortcutContainer = inflateAndAdd(R.layout.deep_shortcut_container, this);
+        applyPopupCardBorder(mDeepShortcutContainer);
         for (int i = deepShortcutCount; i > 0; i--) {
             currentHeight += mShortcutHeight;
             // when there is limited vertical screen space, limit total popup rows to fit

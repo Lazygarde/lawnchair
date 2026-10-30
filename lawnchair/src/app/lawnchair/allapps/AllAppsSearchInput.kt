@@ -180,10 +180,11 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
                     showLens = lensIntent != null,
                 )
 
-                val backgroundColor = if (supportBlur) {
-                    ColorTokens.SearchboxHighlightBlur.resolveColor(context)
-                } else {
-                    ColorTokens.SearchboxHighlight.resolveColor(context)
+                val isLightCleanerPill = !Utilities.isDarkTheme(context)
+                val backgroundColor = when {
+                    isLightCleanerPill -> 0xFFF2F4F7.toInt()
+                    supportBlur -> ColorTokens.SearchboxHighlightBlur.resolveColor(context)
+                    else -> ColorTokens.SearchboxHighlight.resolveColor(context)
                 }
 
                 val backgroundAlpha by animateIntAsState(
@@ -197,8 +198,12 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
                     backgroundColor = backgroundColor,
                     backgroundAlpha = backgroundAlpha,
                     cornerRadius = 1f,
-                    strokeColor = null,
-                    strokeWidth = 0f,
+                    strokeColor = if (isLightCleanerPill) 0xFFE5E7EB.toInt() else null,
+                    strokeWidth = if (isLightCleanerPill && !isFocused && queryEmpty) {
+                        Utilities.dpToPx(1f).toFloat()
+                    } else {
+                        0f
+                    },
                 )
 
                 val actions = QsbActions(
@@ -312,9 +317,15 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
 
                 if (input.text.isNullOrEmpty()) {
                     animatePadding(currentPaddingLeft, currentPaddingRight)
+                    if (prefs2.searchAlgorithm.firstCached() != LawnchairSearchAlgorithm.APP_SEARCH) {
+                        input.setHint(R.string.all_apps_device_search_hint)
+                    } else {
+                        input.setHint(R.string.all_apps_search_bar_hint)
+                    }
+                } else {
+                    input.setHint("")
                 }
                 focusedResultTitle = ""
-                input.setHint("")
                 hint.text = ""
             }
 

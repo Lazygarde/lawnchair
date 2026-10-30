@@ -172,6 +172,7 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
         mPaginationPaint = new Paint(Paint.ANTI_ALIAS_FLAG);
         mPaginationPaint.setStyle(Style.FILL);
         mPaginationPaint.setColor(ColorTokens.pageIndicatorDotColor.resolveColor(context));
+        mToAlpha = VISIBLE_ALPHA;
         mDotRadius = getResources().getDimension(R.dimen.page_indicator_dot_size) / 2;
         mGapWidth = getResources().getDimension(R.dimen.page_indicator_gap_width);
         mCircleGap = (enableLauncherVisualRefresh())
@@ -270,6 +271,9 @@ public class PageIndicatorDots extends View implements Insettable, PageIndicator
             hideAfterDelay();
         } else if (!shouldAutoHide) {
             mDelayedPaginationFadeHandler.removeCallbacksAndMessages(null);
+            if (mPaginationPaint.getAlpha() < VISIBLE_ALPHA) {
+                animatePaginationToAlpha(VISIBLE_ALPHA);
+            }
         }
     }
 

@@ -262,7 +262,7 @@ public class InvariantDeviceProfile {
     public int allAppsCellSpecsTwoPanelId = INVALID_RESOURCE_HANDLE;
 
     private String mLocale = "";
-    public boolean enableTwoLinesInAllApps = false;
+    public boolean enableTwoLinesInAllApps = true;
 
     // If non-negative, the workspace row with which top of the all apps container is to be aligned
     // with.
@@ -443,9 +443,7 @@ public class InvariantDeviceProfile {
             DeviceProfileOverrides.PreviewOverrides previewOverrides) {
         this.closestProfile = displayOption.grid;
         
-        enableTwoLinesInAllApps = Flags.enableTwolineToggle()
-                && Utilities.isEnglishLanguage(context)
-                && mPrefs.get(ENABLE_TWOLINE_ALLAPPS_TOGGLE);
+        enableTwoLinesInAllApps = true;
         mLocale = context.getResources().getConfiguration().locale.toString();
 
          DeviceProfileOverrides.Options overrideOptions = DeviceProfileOverrides.INSTANCE.get(context)

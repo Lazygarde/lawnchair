@@ -21,8 +21,8 @@ import android.app.ActivityOptions
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.RenderEffect
 import android.graphics.RectF
+import android.graphics.RenderEffect
 import android.graphics.Shader
 import android.graphics.drawable.Drawable
 import android.os.Bundle
@@ -37,6 +37,7 @@ import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
 import androidx.lifecycle.lifecycleScope
 import app.lawnchair.LawnchairApp.Companion.showQuickstepWarningIfNecessary
+import app.lawnchair.aicleaner.AiCleanerMinusOneOverlayProvider
 import app.lawnchair.compat.LawnchairQuickstepCompat
 import app.lawnchair.data.AppDatabase
 import app.lawnchair.data.wallpaper.service.WallpaperService
@@ -169,6 +170,13 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
         layoutInflater.factory2 = LawnchairLayoutFactory(this)
         super.onCreate(savedInstanceState)
 
+        if (Utilities.ATLEAST_S) {
+            try {
+                window?.addFlags(WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+            } catch (_: Throwable) {
+            }
+        }
+
         prefs.launcherTheme.subscribeChanges(this, ::updateTheme)
         prefs.feedProvider.subscribeChanges(this, defaultOverlay::reconnect)
         preferenceManager2.enableFeed.get().distinctUntilChanged().onEach { enable ->
@@ -293,7 +301,12 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
     override fun getSupportedShortcuts(container: Int): Stream<SystemShortcut.Factory<*>> = Stream.concat(
         super.getSupportedShortcuts(container),
         Stream.concat(
-            Stream.of(LawnchairShortcut.UNINSTALL, LawnchairShortcut.CUSTOMIZE, LawnchairShortcut.OPEN_IN_STORE),
+            Stream.of(
+                LawnchairShortcut.CUSTOMIZE,
+                LawnchairShortcut.OPEN_IN_STORE,
+                LawnchairShortcut.SHARE,
+                LawnchairShortcut.UNINSTALL,
+            ),
             if (LawnchairApp.isRecentsEnabled) Stream.of(LawnchairShortcut.PAUSE_APPS) else Stream.empty(),
         ),
     )
@@ -686,11 +699,13 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
     override fun getDefaultOverlay(): LauncherOverlayManager {
         val customOverlayEnabled = resources.getBoolean(R.bool.config_enable_custom_overlay)
         val inProcessProvider = LawnchairOverlayRegistry.getProvider()
-        return if (customOverlayEnabled && inProcessProvider != null) {
-            InProcessOverlayManager(this, inProcessProvider)
-        } else {
-            defaultOverlay
+        if (customOverlayEnabled && inProcessProvider != null) {
+            return InProcessOverlayManager(this, inProcessProvider)
         }
+        if (resources.getBoolean(R.bool.config_enable_ai_cleaner_minus_one)) {
+            return InProcessOverlayManager(this, AiCleanerMinusOneOverlayProvider())
+        }
+        return defaultOverlay
     }
 
     override fun onBackPressed() {

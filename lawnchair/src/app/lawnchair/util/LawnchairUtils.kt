@@ -23,7 +23,6 @@ import android.app.PendingIntent.FLAG_CANCEL_CURRENT
 import android.app.PendingIntent.FLAG_IMMUTABLE
 import android.content.ContentResolver
 import android.content.Context
-import android.graphics.Color
 import android.content.Intent
 import android.content.pm.PackageInfo.REQUESTED_PERMISSION_GRANTED
 import android.content.pm.PackageManager
@@ -32,6 +31,7 @@ import android.content.res.Resources
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.drawable.BitmapDrawable
@@ -151,12 +151,14 @@ fun supportsRoundedCornersOnWindows(context: Context): Boolean {
 
 fun overrideAllAppsTextColor(textView: TextView) {
     val context = textView.context
-    val luminance = getAllAppsBaseColor(context, ColorTokens.AllAppsScrimColor.resolveColor(context)).luminance
-    val opacity = PreferenceManager.getInstance(context).drawerOpacity.get()
-    if (luminance > 0.5f || opacity <= 0.3f) {
+    if (!Utilities.isDarkTheme(context)) {
+        textView.setTextColor(AI_CLEANER_DRAWER_TEXT_COLOR)
+    } else {
         textView.setTextColor(Themes.getAttrColor(context, R.attr.allAppsAlternateTextColor))
     }
 }
+
+private const val AI_CLEANER_DRAWER_TEXT_COLOR = 0xFF1A1C1E.toInt()
 
 @Suppress("UNCHECKED_CAST")
 fun <T> JSONArray.toArrayList(): ArrayList<T> {

@@ -145,13 +145,13 @@ object ColorTokens {
 
     @JvmField val FolderPreviewColor = DayNightColorToken(Accent2_200, Neutral1_900.setLStar(12.0))
 
-    @JvmField val PopupColorPrimary = DayNightColorToken(Accent2_50, Neutral2_800)
+    @JvmField val PopupColorPrimary = DayNightColorToken(StaticColorToken(0xFAFFFFFF), Neutral2_800)
 
     @JvmField val PopupColorSecondary = DayNightColorToken(Neutral2_100, Neutral1_900)
 
     @JvmField val PopupColorTertiary = DayNightColorToken(Neutral2_300, Neutral2_700)
 
-    @JvmField val PopupShadeFirst = DayNightColorToken(PopupColorPrimary.setLStar(98.0), PopupColorPrimary.setLStar(20.0))
+    @JvmField val PopupShadeFirst = DayNightColorToken(StaticColorToken(0xFAFFFFFF), PopupColorPrimary.setLStar(20.0))
 
     @JvmField val PopupShadeSecond = DayNightColorToken(PopupColorPrimary.setLStar(95.0), PopupColorPrimary.setLStar(15.0))
 

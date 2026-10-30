@@ -137,7 +137,7 @@ class PreferenceManager2 @Inject constructor(
         defaultValue = IconShape.fromString(
             value = context.getString(R.string.config_default_icon_shape),
             context = context,
-        ) ?: IconShape.Circle,
+        ) ?: IconShape.Squircle,
         parse = {
             IconShape.fromString(value = it, context = context)
                 ?: IconShapeManager.getSystemIconShape(context)
@@ -153,7 +153,7 @@ class PreferenceManager2 @Inject constructor(
         defaultValue = IconShape.fromString(
             value = context.getString(R.string.config_default_folder_shape),
             context = context,
-        ) ?: IconShape.Circle,
+        ) ?: IconShape.Squircle,
         parse = {
             IconShape.fromString(value = it, context = context)
                 ?: IconShapeManager.getSystemIconShape(context)
@@ -221,8 +221,7 @@ class PreferenceManager2 @Inject constructor(
 
     val hotseatBackgroundCornerRadius = preference(
         key = floatPreferencesKey(name = "hotseat_bg_corner_radius"),
-        defaultValue = context.resources.getDimension(R.dimen.bg_round_rect_radius) /
-            context.resources.displayMetrics.density, // This should hopefully match corner of all devices
+        defaultValue = 24f,
         onSet = { reloadHelper.recreate() },
     )
 
@@ -474,8 +473,8 @@ class PreferenceManager2 @Inject constructor(
 
     val workspaceTextColor = preference(
         key = stringPreferencesKey(name = "workspace_text_color"),
-        defaultValue = ColorMode.AUTO,
-        parse = { ColorMode.fromString(it) ?: ColorMode.AUTO },
+        defaultValue = ColorMode.LIGHT,
+        parse = { ColorMode.fromString(it) ?: ColorMode.LIGHT },
         save = { it.toString() },
         onSet = { reloadHelper.recreate() },
     )

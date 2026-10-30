@@ -10,6 +10,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.pm.SuspendDialogInfo
+import android.content.res.ColorStateList
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.drawable.AdaptiveIconDrawable
@@ -17,6 +18,8 @@ import android.net.Uri
 import android.os.UserHandle
 import android.util.Log
 import android.view.View
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.ui.unit.dp
@@ -104,6 +107,16 @@ class LawnchairShortcut {
             val key = ComponentKey(itemInfo.targetComponent, itemInfo.user)
             return launcher.appsView.appsStore.getApp(key)
         }
+
+        val SHARE =
+            SystemShortcut.Factory { activity: ActivityContext, itemInfo: ItemInfo, originalView: View ->
+                if (itemInfo.itemType != ITEM_TYPE_APPLICATION) return@Factory null
+                val packageName = itemInfo.targetComponent?.packageName ?: return@Factory null
+                if (ShortcutUtil.isExcludedFromPopup(activity.asContext(), itemInfo)) {
+                    return@Factory null
+                }
+                Share(activity, itemInfo, originalView, packageName)
+            }
 
         val UNINSTALL =
             SystemShortcut.Factory { activity: ActivityContext, itemInfo: ItemInfo, view: View ->
@@ -260,14 +273,54 @@ class LawnchairShortcut {
         }
     }
 
+    class Share(
+        target: ActivityContext,
+        itemInfo: ItemInfo,
+        originalView: View,
+        private val packageName: String,
+    ) : SystemShortcut<ActivityContext>(
+        R.drawable.ic_ai_cleaner_popup_share,
+        R.string.action_share,
+        target,
+        itemInfo,
+        originalView,
+    ) {
+        override fun onClick(view: View) {
+            AbstractFloatingView.closeAllOpenViews(mTarget)
+            val shareUrl = "https://play.google.com/store/apps/details?id=$packageName"
+            val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                type = "text/plain"
+                putExtra(Intent.EXTRA_TEXT, shareUrl)
+            }
+            val chooser = Intent.createChooser(sendIntent, null).apply {
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            runCatching {
+                view.context.startActivity(chooser)
+            }
+        }
+    }
+
     class UnInstall(private var target: ActivityContext?, private var itemInfo: ItemInfo?, originalView: View?) :
         SystemShortcut<ActivityContext>(
-            R.drawable.ic_uninstall_no_shadow,
+            R.drawable.ic_ai_cleaner_popup_uninstall,
             R.string.uninstall_drop_target_label,
             target,
             itemInfo,
             originalView,
         ) {
+
+        override fun setIconAndLabelFor(iconView: View, labelView: TextView) {
+            super.setIconAndLabelFor(iconView, labelView)
+            val uninstallRed = 0xFFE53E3E.toInt()
+            iconView.backgroundTintList = ColorStateList.valueOf(uninstallRed)
+            labelView.setTextColor(uninstallRed)
+        }
+
+        override fun setIconAndContentDescriptionFor(view: ImageView) {
+            super.setIconAndContentDescriptionFor(view)
+            view.imageTintList = ColorStateList.valueOf(0xFFE53E3E.toInt())
+        }
 
         /**
          * @return the component name that should be uninstalled or null.

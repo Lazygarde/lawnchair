@@ -209,11 +209,11 @@ public class AllAppsState extends LauncherState {
         int backgroundColor;
         if (!launcher.getDeviceProfile().shouldShowAllAppsOnSheet()) {
             backgroundColor = ColorTokens.AllAppsScrimColor.resolveColor(launcher);
-        } else if (!Flags.allAppsBlur()) {
+        } else if (!Flags.allAppsBlur() || !launcher.isAllAppsBackgroundBlurEnabled()) {
             backgroundColor = LawnchairUtilsKt.getAllAppsBackgroundColor(launcher,
                 ColorTokens.WidgetsPickerScrim.resolveColor(launcher));
         } else {
-            backgroundColor = ColorTokens.AllAppsScrimColor.resolveColor(launcher);
+            backgroundColor = Color.TRANSPARENT;
         }
         return new ScrimColors(backgroundColor, /* foregroundColor */ Color.TRANSPARENT);
     }

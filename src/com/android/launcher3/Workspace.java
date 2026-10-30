@@ -667,24 +667,29 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             mFirstPagePinnedItem = null;
             return;
         }
-        if (mFirstPagePinnedItem == null) {
-            SmartspaceMode smartspaceMode = PreferenceCacheExtensionsKt
+        SmartspaceMode activeSmartspaceMode = PreferenceCacheExtensionsKt
                 .firstCached(mPreferenceManager2.getSmartspaceMode());
-            if (!smartspaceMode.isAvailable(this.mLauncher)) {
+        if (!activeSmartspaceMode.isAvailable(this.mLauncher)) {
+            activeSmartspaceMode = LawnchairSmartspace.INSTANCE;
+        }
+        if (mFirstPagePinnedItem == null) {
+            if (!PreferenceCacheExtensionsKt.firstCached(mPreferenceManager2.getSmartspaceMode())
+                    .isAvailable(this.mLauncher)) {
                 // The current smartspace mode is not available,
                 // setting the smartspace mode to one that is always available
-                smartspaceMode = LawnchairSmartspace.INSTANCE;
-                com.patrykmichalik.opto.core.PreferenceExtensionsKt.setBlocking(mPreferenceManager2.getSmartspaceMode(), smartspaceMode);
+                com.patrykmichalik.opto.core.PreferenceExtensionsKt.setBlocking(mPreferenceManager2.getSmartspaceMode(), activeSmartspaceMode);
             }
             // In transposed layout, we add the first page pinned widget in the Grid.
             // As workspace does not touch the edges, we do not need a full
             // width first page pinned item.
             mFirstPagePinnedItem = LayoutInflater.from(getContext())
-                    .inflate(smartspaceMode.getLayoutResourceId(), firstPage, false);
+                    .inflate(activeSmartspaceMode.getLayoutResourceId(), firstPage, false);
         }
 
         int cellHSpan = mLauncher.getDeviceProfile().inv.numColumns;
-        CellLayoutLayoutParams lp = new CellLayoutLayoutParams(0, 0, cellHSpan, 1);
+        int cellVSpan = Math.min(activeSmartspaceMode.getSpanY(),
+                Math.max(1, mLauncher.getDeviceProfile().inv.numRows));
+        CellLayoutLayoutParams lp = new CellLayoutLayoutParams(0, 0, cellHSpan, cellVSpan);
         lp.canReorder = false;
         if (!firstPage.addViewToCellLayout(
                 mFirstPagePinnedItem, 0, R.id.search_container_workspace, lp, true)) {

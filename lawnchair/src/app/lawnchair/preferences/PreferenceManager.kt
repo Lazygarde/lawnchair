@@ -41,6 +41,7 @@ import com.android.launcher3.util.SafeCloseable
 import com.google.android.msdl.data.model.FeedbackLevel
 import com.google.android.msdl.domain.MSDLPlayer
 import javax.inject.Inject
+import kotlin.math.roundToInt
 
 @LauncherAppSingleton
 class PreferenceManager @Inject constructor(
@@ -68,7 +69,7 @@ class PreferenceManager @Inject constructor(
     val iconPackPackage = StringPref("pref_iconPackPackage", "", reloadIcons)
     val themedIconPackPackage = StringPref("pref_themedIconPackPackage", "", reloadIcons)
     val allowRotation = BoolPref("pref_allowRotation", false)
-    val wrapAdaptiveIcons = BoolPref("prefs_wrapAdaptive", true)
+    val wrapAdaptiveIcons = BoolPref("prefs_wrapAdaptive", false)
     val transparentIconBackground = BoolPref("prefs_transparentIconBackground", false)
     val shadowBGIcons = BoolPref("pref_shadowBGIcons", true)
     val addIconToHome = BoolPref("pref_add_icon_to_home", true)
@@ -108,11 +109,11 @@ class PreferenceManager @Inject constructor(
     val workspaceIncreaseMaxGridSize = BoolPref("pref_workspace_increase_max_grid_size", false)
     val folderRows = IdpIntPref("pref_folderRows", { numFolderRows[INDEX_DEFAULT] }, reloadGrid)
 
-    val drawerOpacity = FloatPref("pref_drawerOpacity", .5f, recreate)
+    val drawerOpacity = FloatPref("pref_drawerOpacity", .6f, recreate)
     val coloredBackgroundLightness = FloatPref("pref_coloredBackgroundLightness", 1F)
     val feedProvider = StringPref("pref_feedProvider", "")
     val ignoreFeedWhitelist = BoolPref("pref_ignoreFeedWhitelist", false)
-    val launcherTheme = StringPref("pref_launcherTheme", "system")
+    val launcherTheme = StringPref("pref_launcherTheme", "light")
     val overrideWindowCornerRadius = BoolPref("pref_overrideWindowCornerRadius", false, recreate)
     val windowCornerRadius = IntPref("pref_windowCornerRadius", 80, recreate)
     val autoLaunchRoot = BoolPref("pref_autoLaunchRoot", false)
@@ -162,16 +163,19 @@ class PreferenceManager @Inject constructor(
     val drawerThemedIcons = BoolPref("drawer_themed_icons", false, reloadIcons)
     val tintIconPackBackgrounds = BoolPref("tint_icon_pack_backgrounds", false, reloadIcons)
 
+    private val defaultHotseatHorizontalInsetPx =
+        ((20f * context.resources.displayMetrics.density / 5f).roundToInt() * 5).coerceIn(0, 100)
+
     val hotseatQsbCornerRadius = FloatPref("pref_hotseatQsbCornerRadius", 1F, recreate)
     val hotseatQsbAlpha = IntPref("pref_searchHotseatTranparency", 100, recreate)
     val hotseatQsbStrokeWidth = FloatPref("pref_searchStrokeWidth", 0F, recreate)
-    val hotseatBG = BoolPref("pref_hotseatBG", false, recreate)
-    val hotseatBGHorizontalInsetLeft = IntPref("pref_hotseatBGHRinsetLeft", 0, recreate)
+    val hotseatBG = BoolPref("pref_hotseatBG", true, recreate)
+    val hotseatBGHorizontalInsetLeft = IntPref("pref_hotseatBGHRinsetLeft", defaultHotseatHorizontalInsetPx, recreate)
     val hotseatBGVerticalInsetTop = IntPref("pref_hotseatBGVRinsetTop", 0, recreate)
-    val hotseatBGHorizontalInsetRight = IntPref("pref_hotseatBGHRinsetRight", 0, recreate)
+    val hotseatBGHorizontalInsetRight = IntPref("pref_hotseatBGHRinsetRight", defaultHotseatHorizontalInsetPx, recreate)
     val hotseatBGVerticalInsetBottom = IntPref("pref_hotseatBGVRinsetBottom", 0, recreate)
 
-    val hotseatBGAlpha = IntPref("pref_hotseatBGTransparency", 100, recreate)
+    val hotseatBGAlpha = IntPref("pref_hotseatBGTransparency", 20, recreate)
 
     val enableWallpaperBlur = BoolPref("pref_enableWallpaperBlur", false, recreate)
     val wallpaperBlur = IntPref("pref_wallpaperBlur", 25, recreate)

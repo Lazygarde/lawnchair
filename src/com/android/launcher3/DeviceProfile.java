@@ -1274,7 +1274,7 @@ public class DeviceProfile {
             iconDrawablePaddingPx = (int) (getNormalizedIconDrawablePadding() * iconScale);
             cellWidthPx = pxFromDp(inv.minCellSize[mTypeIndex].x, mMetrics, scale);
             cellHeightPx = pxFromDp(inv.minCellSize[mTypeIndex].y, mMetrics, scale);
-            maxIconTextLineCount = 1;
+            maxIconTextLineCount = 2;
 
             if (cellWidthPx < iconSizePx) {
                 // If cellWidth no longer fit iconSize, reduce borderSpace to make cellWidth bigger.
@@ -1336,7 +1336,7 @@ public class DeviceProfile {
             cellHeightPx = getIconSizeWithOverlap(iconSizePx)
                     + iconDrawablePaddingPx
                     + Utilities.calculateTextHeight(iconTextSizePx);
-            maxIconTextLineCount = 1;
+            maxIconTextLineCount = 2;
             int cellPaddingY = (getCellSize().y - cellHeightPx) / 2;
             if (iconDrawablePaddingPx > cellPaddingY && !isVerticalLayout
                     && !mDeviceProperties.isMultiWindowMode()) {
@@ -1380,11 +1380,13 @@ public class DeviceProfile {
 
         if (inv.enableTwoLinesInAllApps
                 && !(mIsResponsiveGrid && getAllAppsProfile().getMaxAllAppsTextLineCount() == 2)) {
-            // Add extra textHeight to the existing allAppsCellHeight.
-            mAllAppsProfile = getAllAppsProfile().copyWithCellHeightPx(
-                    getAllAppsProfile().getCellHeightPx() + Utilities.calculateTextHeight(
-                            getAllAppsProfile().getIconTextSizePx())
-            );
+            // Add extra textHeight to the existing allAppsCellHeight only if multiplier >= 1f
+            if (allAppsCellHeightMultiplier >= 1f) {
+                mAllAppsProfile = getAllAppsProfile().copyWithCellHeightPx(
+                        getAllAppsProfile().getCellHeightPx() + Utilities.calculateTextHeight(
+                                getAllAppsProfile().getIconTextSizePx())
+                );
+            }
         }
 
         updateHotseatSizes(iconSizePx);
@@ -2045,6 +2047,22 @@ public class DeviceProfile {
         } else {
             return hotseatBarSizePx - hotseatCellHeightPx * numHotseatRows;
         }
+    }
+
+    /**
+     * Vertical gap (px) between the hotseat icon cell and the floating glass dock drawn behind it.
+     * A hotseat cell reserves extra room for folder overlap, so the glass is trimmed to hug a
+     * single row of icons instead of the whole cell. Returns 0 when the dock background is off.
+     */
+    public int getHotseatGlassVerticalInsetPx(Context context) {
+        if (isVerticalBarLayout() || numHotseatRows != 1 || hotseatBarSizePx <= 0) {
+            return 0;
+        }
+        if (!PreferenceManager.getInstance(context).getHotseatBG().get()) {
+            return 0;
+        }
+        int glassHeight = Math.round(iconSizePx * 1.5f);
+        return Math.max(0, (hotseatCellHeightPx - glassHeight) / 2);
     }
 
     /**

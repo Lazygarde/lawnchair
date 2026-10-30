@@ -90,14 +90,14 @@ constructor(
             prefs2.iconShape.firstCached()
         } catch (e: Exception) {
             Log.d(TAG, "Error getting icon shape", e)
-            IconShape.Circle
+            IconShape.Squircle
         }
 
         val currentFolderShape: IconShape = try {
             prefs2.folderShape.firstCached()
         } catch (e: Exception) {
             Log.d(TAG, "Error getting folder shape", e)
-            IconShape.Circle
+            IconShape.Squircle
         }
 
         val currentPrefs1State = prefs1State()

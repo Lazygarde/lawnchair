@@ -10,9 +10,11 @@ import com.android.launcher3.R
 sealed class SmartspaceMode(
     @StringRes val nameResourceId: Int,
     @LayoutRes val layoutResourceId: Int,
+    open val spanY: Int = 1,
 ) {
     companion object {
         fun fromString(value: String): SmartspaceMode = when (value) {
+            "ai_cleaner" -> AiCleanerSmartspace
             "google" -> GoogleSmartspace
             "google_search" -> GoogleSearchSmartspace
             "smartspacer" -> Smartspacer
@@ -23,6 +25,7 @@ sealed class SmartspaceMode(
          * @return The list of all smartspace options
          */
         fun values() = listOf(
+            AiCleanerSmartspace,
             LawnchairSmartspace,
             GoogleSmartspace,
             GoogleSearchSmartspace,
@@ -31,6 +34,15 @@ sealed class SmartspaceMode(
     }
 
     abstract fun isAvailable(context: Context): Boolean
+}
+
+object AiCleanerSmartspace : SmartspaceMode(
+    nameResourceId = R.string.smartspace_mode_ai_cleaner,
+    layoutResourceId = R.layout.smartspace_ai_cleaner,
+    spanY = 2,
+) {
+    override fun toString() = "ai_cleaner"
+    override fun isAvailable(context: Context): Boolean = true
 }
 
 object LawnchairSmartspace : SmartspaceMode(

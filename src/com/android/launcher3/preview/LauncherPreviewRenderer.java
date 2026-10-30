@@ -348,15 +348,24 @@ public class LauncherPreviewRenderer extends BaseContext
                 .forEach(this::inflateAndAdd);
         populateHotseatPredictions(itemIdMap);
 
-        // Add first page QSB
+        // Add first page QSB / Smartspace
         if (PreferenceCacheExtensionsKt.firstCached(mPreferenceManager2.getEnableSmartspace())) {
             CellLayout firstScreen = mWorkspaceScreens.get(FIRST_SCREEN_ID);
             if (firstScreen != null) {
-                View qsb = mHomeElementInflater.inflate(mWorkspaceSearchContainer, firstScreen, false);
+                app.lawnchair.smartspace.model.SmartspaceMode smartspaceMode =
+                        PreferenceCacheExtensionsKt.firstCached(mPreferenceManager2.getSmartspaceMode());
+                if (!smartspaceMode.isAvailable(this)) {
+                    smartspaceMode = app.lawnchair.smartspace.model.LawnchairSmartspace.INSTANCE;
+                }
+                int layoutId = mWorkspaceSearchContainer == R.layout.smartspace_container
+                        ? smartspaceMode.getLayoutResourceId()
+                        : mWorkspaceSearchContainer;
+                View qsb = mHomeElementInflater.inflate(layoutId, firstScreen, false);
                 // TODO: set bgHandler on qsb when it is BaseTemplateCard, which requires API
                 //  changes.
+                int spanY = Math.min(smartspaceMode.getSpanY(), Math.max(1, firstScreen.getCountY()));
                 CellLayoutLayoutParams lp = new CellLayoutLayoutParams(
-                        0, 0, firstScreen.getCountX(), 1);
+                        0, 0, firstScreen.getCountX(), spanY);
                 lp.canReorder = false;
                 firstScreen.addViewToCellLayout(qsb, 0, R.id.search_container_workspace, lp, true);
             }

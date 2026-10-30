@@ -26,7 +26,14 @@
     <dimen name="noqsb_hotseat_bottom_non_tall_padding">0dp</dimen>
     <dimen name="noqsb_hotseat_extra_vertical_size">34dp</dimen>
 
-    <dimen name="lawnchair_dialog_corner_radius">24dp</dimen>
+    <dimen name="lawnchair_dialog_corner_radius">18dp</dimen>
+
+    <!-- AI Cleaner compact app shortcut popup -->
+    <dimen name="bg_popup_item_width">196dp</dimen>
+    <dimen name="bg_popup_item_height">42dp</dimen>
+    <dimen name="system_shortcut_header_height">42dp</dimen>
+    <dimen name="system_shortcut_icon_size">18dp</dimen>
+    <dimen name="deep_shortcuts_text_padding_start">46dp</dimen>
 
     <!-- Edit Mode page strip (bottom of DragLayer) -->
     <dimen name="edit_mode_page_strip_height">88dp</dimen>
@@ -106,7 +113,7 @@
     <dimen name="key_text_shadow_dy">0.5dp</dimen>
     <dimen name="key_text_shadow_radius">0.5dp</dimen>
     <dimen name="page_indicator_dot_margin">3dp</dimen>
-    <dimen name="page_indicator_dot_size">6dp</dimen>
+    <dimen name="page_indicator_dot_size">7dp</dimen>
     <dimen name="page_indicator_padding_start">2dp</dimen>
     <dimen name="page_indicator_padding_top_bottom">10dp</dimen>
     <dimen name="page_indicator_width">16dp</dimen>

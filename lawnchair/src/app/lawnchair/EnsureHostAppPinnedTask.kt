@@ -142,10 +142,13 @@ class EnsureHostAppPinnedTask : LauncherModel.ModelUpdateTask {
                     // Reserve host app cell so occupant won't be moved back to the same spot
                     grid.markCells(targetCellX, targetCellY, 1, 1, true)
 
-                    // On Screen 0, row 0 is reserved for Smartspace if enabled
-                    val smartspaceEnabled = PreferenceManager2.getInstance(context).enableSmartspace.firstCached()
+                    // On Screen 0, top row(s) are reserved for Smartspace if enabled
+                    val prefs2 = PreferenceManager2.getInstance(context)
+                    val smartspaceEnabled = prefs2.enableSmartspace.firstCached()
                     if (smartspaceEnabled && targetScreenId == WorkspaceLayoutManager.FIRST_SCREEN_ID) {
-                        grid.markCells(0, 0, idp.numColumns, 1, true)
+                        val smartspaceSpanY = prefs2.smartspaceMode.firstCached().spanY
+                            .coerceAtMost(maxOf(1, idp.numRows - 1))
+                        grid.markCells(0, 0, idp.numColumns, smartspaceSpanY, true)
                     }
 
                     val vacant = IntArray(2)

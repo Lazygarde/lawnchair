@@ -926,8 +926,8 @@
 
     -->
     <!-- Launcher strings used -->
-    <string name="all_apps_device_search_hint">Search web and more</string>
-    <string name="all_apps_search_bar_hint">Search apps</string>
+    <string name="all_apps_device_search_hint">Search all apps...</string>
+    <string name="all_apps_search_bar_hint">Search all apps...</string>
     <string name="all_apps_no_search_results">No apps found matching \"<xliff:g example="Android" id="query">%1$s</xliff:g>\"
     </string>
 
@@ -1068,4 +1068,36 @@
     <string name="lawnchair_action_failed">Failed to trigger action</string>
 
     <string name="please_wait">Please wait…</string>
+
+    <!-- AI Cleaner UI strings -->
+    <string name="smartspace_mode_ai_cleaner">Clock, Weather &amp; Search</string>
+    <string name="ai_cleaner_search_hint">Search</string>
+    <string name="ai_cleaner_section_tools">Tools</string>
+    <string name="ai_cleaner_tools_more">More</string>
+    <string name="ai_cleaner_scan_button">SCAN</string>
+    <string name="ai_cleaner_tool_activity_monitor_title">Activity Monitor</string>
+    <string name="ai_cleaner_tool_activity_monitor_desc">Recently active apps</string>
+    <string name="ai_cleaner_tool_wifi_security_title">Wi-Fi Security</string>
+    <string name="ai_cleaner_tool_wifi_security_desc">Secure network</string>
+    <string name="ai_cleaner_tool_storage_usage_title">Storage Usage</string>
+    <string name="ai_cleaner_tool_storage_usage_desc">Check your Storage</string>
+    <string name="ai_cleaner_tool_network_speed_title">Network Speed</string>
+    <string name="ai_cleaner_tool_network_speed_desc">Test your speed</string>
+    <string name="ai_cleaner_section_system_shortcuts">Manage System Tools</string>
+    <string name="ai_cleaner_shortcut_wifi_title">Wi-Fi Settings</string>
+    <string name="ai_cleaner_shortcut_wifi_desc">Connect and manage Wi-Fi networks</string>
+    <string name="ai_cleaner_shortcut_cellular_title">Mobile Network</string>
+    <string name="ai_cleaner_shortcut_cellular_desc">Manage mobile data and SIM options</string>
+    <string name="ai_cleaner_shortcut_battery_title">Battery Usage</string>
+    <string name="ai_cleaner_shortcut_battery_desc">Check battery health and power consumption</string>
+    <string name="ai_cleaner_shortcut_datetime_title">Date &amp; Time</string>
+    <string name="ai_cleaner_shortcut_datetime_desc">Set system date, time, and time zone</string>
+    <string name="ai_cleaner_shortcut_apps_title">App List</string>
+    <string name="ai_cleaner_shortcut_apps_desc">View and manage installed applications</string>
+    <string name="ai_cleaner_shortcut_storage_title">File Manager</string>
+    <string name="ai_cleaner_shortcut_storage_desc">Browse and organize your device files</string>
+    <string name="ai_cleaner_shortcut_display_title">Display Settings</string>
+    <string name="ai_cleaner_shortcut_display_desc">Adjust brightness, theme, and screen timeout</string>
+    <string name="ai_cleaner_shortcut_device_info_title">Device Info</string>
+    <string name="ai_cleaner_shortcut_device_info_desc">View system version and hardware details</string>
 </resources>
