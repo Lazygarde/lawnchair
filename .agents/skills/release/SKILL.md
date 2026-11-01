@@ -83,25 +83,19 @@ git commit -m "chore(release): prepare for lib-v<version>"
 
 ---
 
-### Step 4: Create Annotated Git Tag
+### Step 4: Publish Release (Two Options)
 
-Tags **MUST** strictly follow the pattern `lib-v<version>` because GitHub Actions `.github/workflows/publish_packages.yml` triggers exclusively on `lib-v*`:
+#### Option A: Manual Trigger via GitHub Actions (Recommended - No manual tagging required)
+You do not need to create or push git tags manually.
+1. Go to **Actions** -> **Publish packages** -> **Run workflow**.
+2. Enter the target `version` (e.g. `16.0.0-alpha31`).
+3. Click **Run workflow**.
+The workflow will compile in parallel, create and push the `lib-v<version>` tag automatically, and publish all packages to GitHub Packages.
 
+#### Option B: Git Tag Trigger
+If preferred, you can still tag and push manually:
 ```bash
 git tag -a lib-v<version> -m "Release <version>"
-```
-
-*Example:*
-```bash
-git tag -a lib-v16.0.0-alpha05 -m "Release 16.0.0-alpha05"
-```
-
----
-
-### Step 5: Push Branch and Tag to GitHub
-
-Push both the current branch (e.g. `16-dev`) and the tag:
-```bash
 git push origin 16-dev lib-v<version>
 ```
 

@@ -83,7 +83,21 @@ android {
     }
 }
 
+if (rootProject.tasks.findByName('assemblePublishArtifacts') == null) {
+    rootProject.tasks.register('assemblePublishArtifacts') {
+        group = 'publishing'
+        description = 'Assembles all AARs and sources jars for published library modules'
+    }
+}
+
 afterEvaluate {
+    rootProject.tasks.named('assemblePublishArtifacts').configure {
+        dependsOn(
+            tasks.named("bundle${publishVariant.capitalize()}Aar"),
+            tasks.named("source${publishVariant.capitalize()}Jar")
+        )
+    }
+
     // Modules such as :compatLib and :wmshell point `aidl.srcDirs` at the same directory
     // as their Java sources, so the generated AIDL stubs land on top of the checked-in
     // files when the sources jar is assembled. Keeping the first copy (the checked-in

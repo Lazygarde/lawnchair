@@ -60,10 +60,9 @@ adding a new module to the published set means adding one line there.
 The `Publish packages` workflow (`.github/workflows/publish_packages.yml`) publishes
 every module. It runs on:
 
+- a manual `workflow_dispatch`, which takes a `version` input (e.g. `16.0.0-alpha31`), builds all packages in parallel, publishes to GitHub Packages, and automatically tags and pushes `lib-v<version>` to GitHub.
 - a pushed tag named `lib-v<version>`, e.g. `lib-v16.0.0-alpha01`, which publishes
-  version `16.0.0-alpha01`;
-- a manual `workflow_dispatch`, which takes an optional version input and otherwise
-  publishes `16.0.0-dev.<run number>`.
+  version `16.0.0-alpha01`.
 
 ```bash
 git tag lib-v16.0.0-alpha01
