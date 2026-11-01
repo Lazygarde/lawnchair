@@ -222,6 +222,7 @@ class LawnchairIconProvider @Inject constructor(
             ""
         }
         return "$base|lc:" +
+            "v=3," +
             "ip=${iconPackPref.get()}," +
             "tip=${themedIconSourcePref.get()}," +
             "ti=${prefs.themedIcons.get()}," +

@@ -24,7 +24,7 @@ import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.Region
 import android.util.Log
-import android.util.PathParser
+import androidx.core.graphics.PathParser
 import com.android.launcher3.Utilities
 import com.android.launcher3.graphics.ThemeManager
 import com.android.launcher3.icons.GraphicsUtils
