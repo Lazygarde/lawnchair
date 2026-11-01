@@ -49,6 +49,9 @@ class SearchBarBlurOverlay(
     private val maskInPaint = Paint().apply {
         xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
     }
+    private val addPaint = Paint().apply {
+        xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+    }
     private var cachedFadeTop = Float.NaN
     private var cachedFadeBottom = Float.NaN
 
@@ -166,8 +169,9 @@ class SearchBarBlurOverlay(
             // Fade out the sharp content inside [fadeTop..bandBottom] towards fadeTop.
             canvas.drawRect(0f, fadeTopF, widthF, bandBottomF, maskOutPaint)
 
-            // Draw the blurred content masked in from full at fadeTop to 0 at bandBottom.
-            val layerSave = canvas.saveLayer(0f, fadeTopF, widthF, bandBottomF, null)
+            // Draw the blurred content masked in from full at fadeTop to 0 at bandBottom,
+            // composited with ADD so `(1 - t) + t = 1.0` without SRC_OVER's 0.75 alpha dip.
+            val layerSave = canvas.saveLayer(0f, fadeTopF, widthF, bandBottomF, addPaint)
             canvas.save()
             canvas.translate(0f, (bandTop - pad).toFloat())
             canvas.drawRenderNode(blur)
