@@ -22,7 +22,6 @@ jobs:
         uses: actions/checkout@v7
         with:
           submodules: true
-          fetch-depth: 0
 
       - name: Set up JDK 21
         uses: actions/setup-java@v6
@@ -72,15 +71,10 @@ jobs:
             fi
           fi
 
-      - name: Build publish artifacts in parallel
-        run: ./gradlew assemblePublishArtifacts --parallel --build-cache
-        env:
-          PUBLISH_VERSION: ${{ steps.version.outputs.clean_version }}
-
       - name: Publish to GitHub Packages
         run: |
-          ./gradlew publishAllPublicationsToGitHubPackagesRepository --no-parallel --stacktrace || \
-          (echo "First attempt failed, retrying in 10 seconds..." && sleep 10 && ./gradlew publishAllPublicationsToGitHubPackagesRepository --no-parallel --stacktrace)
+          ./gradlew publishAllPublicationsToGitHubPackagesRepository --parallel --build-cache --stacktrace || \
+          (echo "First attempt failed, retrying in 10 seconds..." && sleep 10 && ./gradlew publishAllPublicationsToGitHubPackagesRepository --parallel --build-cache --stacktrace)
         env:
           PUBLISH_VERSION: ${{ steps.version.outputs.clean_version }}
           GITHUB_ACTOR: ${{ github.actor }}
