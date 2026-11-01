@@ -55,6 +55,8 @@ public class FloatingHeaderView extends LinearLayout implements
         OnHeightUpdatedListener {
 
     private final Rect mRVClip = new Rect(0, 0, Integer.MAX_VALUE, Integer.MAX_VALUE);
+    // LC: how far the lists may draw above the search pill (used by the blur above the search bar)
+    private int mRVClipExtraTop = 0;
     private final Rect mHeaderClip = new Rect(0, 0, Integer.MAX_VALUE, Integer.MAX_VALUE);
     private final ValueAnimator mAnimator = ValueAnimator.ofInt(0, 0);
     private final Point mTempOffset = new Point();
@@ -350,7 +352,7 @@ public class FloatingHeaderView extends LinearLayout implements
         if (pinned) {
             mTranslationY = 0;
         }
-        int maxTranslation = mMaxTranslation - mCurrentRV.getSavedScrollPosition();
+        int maxTranslation = mMaxTranslation - (mCurrentRV != null ? mCurrentRV.getSavedScrollPosition() : 0);
         int uncappedTranslationY = mTranslationY;
         if (!pinned) { // LC
             mTranslationY = Math.max(mTranslationY, -maxTranslation);
@@ -375,14 +377,23 @@ public class FloatingHeaderView extends LinearLayout implements
             // Add back spacing that is otherwise covered by the tabs.
             clipTop += mTabsAdditionalPaddingTop;
         }
-        mRVClip.top = mTabsHidden || mFloatingRowsCollapsed ? clipTop : 0;
-        if (pinned) {
-            // LC: the lists start below the header; never draw them behind its content
-            mRVClip.top = getMaxTranslation();
-        }
         mHeaderClip.top = clipTop;
         // clipping on a draw might cause additional redraw
         setClipBounds(mHeaderClip);
+        final int searchBoxHeight = getResources().getDimensionPixelSize(R.dimen.search_box_height);
+        final int searchContainerHeight = getResources().getDimensionPixelSize(R.dimen.search_box_container_height);
+        final int headerTopMargin = getResources().getDimensionPixelSize(R.dimen.all_apps_header_top_margin);
+        // Pill top edge inside container: container height minus searchBoxHeight / 2
+        final int pillTopOffset = (searchContainerHeight - searchBoxHeight) / 2;
+        final int searchPillTopInRV = -(headerTopMargin - pillTopOffset);
+        if (pinned) {
+            // LC: the lists start below the header; never draw them behind its content
+            mRVClip.top = getMaxTranslation();
+        } else {
+            // Allow app icons to scroll smoothly behind the translucent search pill,
+            // clipping exactly at the top edge of the pill so they never poke above it.
+            mRVClip.top = searchPillTopInRV - mRVClipExtraTop;
+        }
         if (mMainRV != null) {
             mMainRV.setClipBounds(mRVClip);
         }
@@ -395,6 +406,18 @@ public class FloatingHeaderView extends LinearLayout implements
     }
 
     /**
+     * LC: lets the lists draw [extraTop] px above the top edge of the search pill, instead of being
+     * clipped exactly at it. Ignored while the header is pinned.
+     */
+    public void setRecyclerViewTopClipExtra(int extraTop) {
+        if (mRVClipExtraTop == extraTop) {
+            return;
+        }
+        mRVClipExtraTop = extraTop;
+        applyVerticalMove();
+    }
+
+    /**
      * LC: clips the lists' content at [bottom] (in the lists' own coordinates), or Integer.MAX_VALUE
      * for no clip. Used so list content (e.g. inline host slots) never draws under a footer slot.
      * Shares the clip rect with the header collapse logic, which keeps owning the top.
@@ -404,6 +427,13 @@ public class FloatingHeaderView extends LinearLayout implements
             return;
         }
         mRVClip.bottom = bottom;
+        final boolean pinned = isHostHeaderPinned();
+        final int searchBoxHeight = getResources().getDimensionPixelSize(R.dimen.search_box_height);
+        final int searchContainerHeight = getResources().getDimensionPixelSize(R.dimen.search_box_container_height);
+        final int headerTopMargin = getResources().getDimensionPixelSize(R.dimen.all_apps_header_top_margin);
+        final int pillTopOffset = (searchContainerHeight - searchBoxHeight) / 2;
+        final int searchPillTopInRV = -(headerTopMargin - pillTopOffset);
+        mRVClip.top = pinned ? getMaxTranslation() : searchPillTopInRV - mRVClipExtraTop;
         if (mMainRV != null) {
             mMainRV.setClipBounds(mRVClip);
         }

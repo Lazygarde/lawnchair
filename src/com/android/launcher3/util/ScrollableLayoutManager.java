@@ -134,6 +134,11 @@ public class ScrollableLayoutManager extends GridLayoutManager {
     protected void calculateExtraLayoutSpace(RecyclerView.State state, int[] extraLayoutSpace) {
         super.calculateExtraLayoutSpace(state, extraLayoutSpace);
         @Px int extraSpacePx = (int) (getHeight() * EXTRA_BOTTOM_SPACE_BY_HEIGHT_PERCENT);
+        // LC: keep items above the viewport laid out while they are still visible in the top
+        // blur band above the search bar (where clipBounds.top is negative).
+        @Px int topExtraPx = mRv != null && mRv.getClipBounds() != null
+                ? Math.max(0, -mRv.getClipBounds().top) : 0;
+        extraLayoutSpace[0] = Math.max(extraLayoutSpace[0], topExtraPx + extraSpacePx);
         extraLayoutSpace[1] = Math.max(extraLayoutSpace[1], extraSpacePx);
     }
 

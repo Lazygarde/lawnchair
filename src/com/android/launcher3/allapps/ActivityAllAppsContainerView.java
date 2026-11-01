@@ -113,6 +113,7 @@ import java.util.Optional;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
+import app.lawnchair.allapps.SearchBarBlurOverlay;
 import app.lawnchair.preferences2.PreferenceCacheExtensionsKt;
 import static com.topjohnwu.superuser.internal.Utils.context;
 import app.lawnchair.drawerslots.DrawerSlotController;
@@ -1418,6 +1419,15 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         return false;
     }
 
+    // LC: progressive blur under the search bar, applied to every list
+    private SearchBarBlurOverlay mTopBlur;
+
+    /** LC: sets (or clears with null) the progressive blur drawn at the top of all the lists. */
+    public void setTopBlur(@Nullable SearchBarBlurOverlay topBlur) {
+        mTopBlur = topBlur;
+        forAllRecyclerViews(rv -> rv.setTopBlur(topBlur));
+    }
+
     /** The current active recycler view (A-Z list from one of the profiles, or search results). */
     public AllAppsRecyclerView getActiveRecyclerView() {
         if (isSearching()) {
@@ -1965,6 +1975,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             mRecyclerView.bindFastScrollbar(mFastScroller, ALL_APPS_SCROLLER);
             mRecyclerView.setEdgeEffectFactory(createEdgeEffectFactory());
             mRecyclerView.setApps(mAppsList);
+            mRecyclerView.setTopBlur(mTopBlur);
             mRecyclerView.setLayoutManager(mLayoutManager);
             mRecyclerView.setAdapter(mAdapter);
             mRecyclerView.setHasFixedSize(true);

@@ -27,6 +27,8 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.ui.platform.ViewCompositionStrategy
 import androidx.core.view.ViewCompat
@@ -188,7 +190,7 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
                 }
 
                 val backgroundAlpha by animateIntAsState(
-                    if (isFocused || !queryEmpty) 0 else 100,
+                    if (isFocused || !queryEmpty) 0 else 92,
                 )
 
                 // Ignore other theme attributes to preserve existing behavior
@@ -478,6 +480,33 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
             this,
         )
         input.initialize(appsView)
+
+        // Blur the apps right above and below the search bar where they scroll up.
+        if (hideSearchBar || !SearchBarBlurOverlay.isSupported) {
+            appsView.setTopBlur(null)
+        } else {
+            val density = resources.displayMetrics.density
+            val clipExtra = (BLUR_CLIP_EXTRA_DP * density).toInt()
+            appsView.floatingHeaderView?.setRecyclerViewTopClipExtra(clipExtra)
+            val location = IntArray(2)
+            val rvLocation = IntArray(2)
+            appsView.setTopBlur(
+                SearchBarBlurOverlay(
+                    clipExtraPx = clipExtra,
+                    pillHeightPx = resources.getDimensionPixelSize(R.dimen.search_box_height),
+                    belowHeightPx = (BLUR_BELOW_DP * density).toInt(),
+                    fadeHeightPx = (BLUR_FADE_DP * density).toInt(),
+                    blurRadiusPx = BLUR_RADIUS_DP * density,
+                    // Very top of the drawer (the sheet panel on sheet layouts), in the list's coordinates
+                    drawerTop = { rv ->
+                        appsView.visibleContainerView.getLocationInWindow(location)
+                        rv.getLocationInWindow(rvLocation)
+                        location[1] - rvLocation[1]
+                    },
+                    isActive = { appsView.floatingHeaderView?.isHostHeaderPinned != true },
+                ),
+            )
+        }
     }
 
     override fun resetSearch() {
@@ -577,5 +606,19 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
         setupPadding()
         invalidate()
         requestLayout()
+    }
+
+    private companion object {
+        /** How far apps may draw above the search pill; the blur is cut at the top of the drawer. */
+        const val BLUR_CLIP_EXTRA_DP = 200f
+
+        /** Height of the blurred strip below the search pill. */
+        const val BLUR_BELOW_DP = 24f
+
+        /** Soft fade height at the bottom edge of the blur strip. */
+        const val BLUR_FADE_DP = 24f
+
+        /** Blur radius. */
+        const val BLUR_RADIUS_DP = 10f
     }
 }

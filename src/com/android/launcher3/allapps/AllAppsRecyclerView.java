@@ -33,6 +33,7 @@ import static com.android.launcher3.recyclerview.AllAppsRecyclerViewPoolKt.EXTRA
 import static com.android.launcher3.recyclerview.AllAppsRecyclerViewPoolKt.PREINFLATE_ICONS_ROW_COUNT;
 import static com.android.launcher3.util.LogConfig.SEARCH_LOGGING;
 
+import app.lawnchair.allapps.SearchBarBlurOverlay;
 import app.lawnchair.drawerslots.SlotFocusNavigator;
 import android.content.Context;
 import android.graphics.Canvas;
@@ -163,6 +164,26 @@ public class AllAppsRecyclerView extends FastScrollRecyclerView {
                     + System.currentTimeMillis());
         }
         super.onDraw(c);
+    }
+
+    // LC: progressive blur applied to the top band of the list (under the search bar)
+    @Nullable
+    private SearchBarBlurOverlay mTopBlur;
+
+    public void setTopBlur(@Nullable SearchBarBlurOverlay topBlur) {
+        if (mTopBlur != topBlur) {
+            mTopBlur = topBlur;
+            invalidate();
+        }
+    }
+
+    @Override
+    protected void dispatchDraw(Canvas canvas) {
+        if (mTopBlur != null) {
+            mTopBlur.draw(this, canvas, c -> super.dispatchDraw(c));
+        } else {
+            super.dispatchDraw(canvas);
+        }
     }
 
     @Override
