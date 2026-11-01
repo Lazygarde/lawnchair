@@ -19,6 +19,7 @@ import com.android.launcher3.model.ModelWriter
 import com.android.launcher3.model.WorkspaceItemSpaceFinder
 import com.android.launcher3.model.data.AppInfo
 import com.android.launcher3.model.data.ItemInfo
+import com.android.launcher3.model.data.LauncherAppWidgetInfo
 import com.android.launcher3.model.data.WorkspaceItemInfo
 import com.android.launcher3.util.GridOccupancy
 import com.android.launcher3.util.IntArray as LauncherIntArray
@@ -40,6 +41,12 @@ class EnsureHostAppPinnedTask : LauncherModel.ModelUpdateTask {
             dataModel = dataModel,
             modelWriter = taskController.getModelWriter(),
             iconCache = taskController.iconCache,
+            taskController = taskController,
+        )
+        ensureTopWidget(
+            context = context,
+            dataModel = dataModel,
+            modelWriter = taskController.getModelWriter(),
             taskController = taskController,
         )
     }
@@ -203,6 +210,56 @@ class EnsureHostAppPinnedTask : LauncherModel.ModelUpdateTask {
                 }
 
                 Log.d(TAG, "Successfully auto-pinned host app (" + hostPackageName + ") to Screen " + targetScreenId + " (" + targetCellX + ", " + targetCellY + ")")
+            }
+        }
+
+        fun ensureTopWidget(
+            context: Context,
+            dataModel: BgDataModel,
+            modelWriter: ModelWriter,
+            taskController: ModelTaskController? = null,
+        ) {
+            val hostPackageName = context.packageName
+            synchronized(dataModel) {
+                val prefs2 = PreferenceManager2.getInstance(context)
+                val smartspaceEnabled = prefs2.enableSmartspace.firstCached()
+                if (smartspaceEnabled) return
+
+                val targetScreenId = WorkspaceLayoutManager.FIRST_SCREEN_ID
+                val screen0Items = dataModel.itemsIdMap.filter {
+                    it.container == LauncherSettings.Favorites.CONTAINER_DESKTOP &&
+                        it.screenId == targetScreenId
+                }
+
+                // Check if any widget on screen 0 belonging to host app is below row 0
+                val widget = screen0Items.find { item ->
+                    item is LauncherAppWidgetInfo &&
+                        item.cellX == 0 && item.cellY > 0 &&
+                        item.targetPackage == hostPackageName
+                } as? LauncherAppWidgetInfo ?: return
+
+                // Check if target top cells (0, 0, spanX, spanY) are free of any other items
+                val isTopOccupied = screen0Items.any { item ->
+                    item.id != widget.id &&
+                        item.cellX < widget.spanX &&
+                        (item.cellX + item.spanX) > 0 &&
+                        item.cellY < widget.spanY &&
+                        (item.cellY + item.spanY) > 0
+                }
+
+                if (!isTopOccupied) {
+                    Log.d(TAG, "Moving host widget " + widget.id + " from (0, " + widget.cellY + ") to (0, 0)")
+                    widget.cellX = 0
+                    widget.cellY = 0
+                    modelWriter.moveItemInDatabase(
+                        widget,
+                        LauncherSettings.Favorites.CONTAINER_DESKTOP,
+                        targetScreenId,
+                        0,
+                        0,
+                    )
+                    taskController?.bindUpdatedWorkspaceItems(listOf(widget))
+                }
             }
         }
     }
