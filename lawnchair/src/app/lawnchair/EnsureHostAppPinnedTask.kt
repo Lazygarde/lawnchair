@@ -7,9 +7,8 @@ import android.content.Intent
 import android.content.pm.LauncherApps
 import android.os.Process
 import android.util.Log
-import app.lawnchair.preferences2.PreferenceManager2
-import app.lawnchair.preferences2.firstCached
 import app.lawnchair.smartspace.SmartspaceAppWidgetProvider
+import app.lawnchair.workspaceheader.LawnchairWorkspaceHeader
 import com.android.launcher3.InvariantDeviceProfile
 import com.android.launcher3.LauncherAppState
 import com.android.launcher3.LauncherModel
@@ -155,12 +154,9 @@ class EnsureHostAppPinnedTask : LauncherModel.ModelUpdateTask {
                     grid.markCells(targetCellX, targetCellY, 1, 1, true)
 
                     // On Screen 0, top row(s) are reserved for Smartspace if enabled
-                    val prefs2 = PreferenceManager2.getInstance(context)
-                    val smartspaceEnabled = prefs2.enableSmartspace.firstCached()
-                    if (smartspaceEnabled && targetScreenId == WorkspaceLayoutManager.FIRST_SCREEN_ID) {
-                        val smartspaceSpanY = prefs2.smartspaceMode.firstCached().spanY
-                            .coerceAtMost(maxOf(1, idp.numRows - 1))
-                        grid.markCells(0, 0, idp.numColumns, smartspaceSpanY, true)
+                    val headerRows = LawnchairWorkspaceHeader.reservedRows(context)
+                    if (headerRows > 0 && targetScreenId == WorkspaceLayoutManager.FIRST_SCREEN_ID) {
+                        grid.markCells(0, 0, idp.numColumns, headerRows.coerceAtMost(maxOf(1, idp.numRows - 1)), true)
                     }
 
                     val vacant = IntArray(2)
@@ -226,9 +222,9 @@ class EnsureHostAppPinnedTask : LauncherModel.ModelUpdateTask {
         ) {
             val hostPackageName = context.packageName
             synchronized(dataModel) {
-                val prefs2 = PreferenceManager2.getInstance(context)
-                val smartspaceEnabled = prefs2.enableSmartspace.firstCached()
-                if (smartspaceEnabled) return
+                // The pinned header owns the top rows, either the Smartspace or the host's own view,
+                // which is not an app widget: binding widgets under it would only be dropped again.
+                if (LawnchairWorkspaceHeader.isEnabled(context)) return
 
                 val targetScreenId = WorkspaceLayoutManager.FIRST_SCREEN_ID
                 val screen0Items = dataModel.itemsIdMap.filter {

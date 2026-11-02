@@ -158,6 +158,8 @@ import app.lawnchair.smartspace.model.LawnchairSmartspace;
 import app.lawnchair.smartspace.model.SmartspaceMode;
 import app.lawnchair.theme.drawable.DrawableTokens;
 import app.lawnchair.util.LawnchairUtilsKt;
+import app.lawnchair.workspaceheader.LawnchairWorkspaceHeader;
+import app.lawnchair.workspaceheader.WorkspaceHeaderProvider;
 
 /**
  * The workspace is a wide area with a wallpaper and a finite number of pages.
@@ -663,20 +665,23 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     public void bindAndInitFirstWorkspaceScreen() {
         // Add the first page
         CellLayout firstPage = insertNewWorkspaceScreen(Workspace.FIRST_SCREEN_ID, getChildCount());
-        if (!PreferenceCacheExtensionsKt.firstCached(mPreferenceManager2.getEnableSmartspace())) {
+        final int headerRows = LawnchairWorkspaceHeader.reservedRows(getContext());
+        if (headerRows == 0) {
             mFirstPagePinnedItem = null;
             return;
         }
-        SmartspaceMode activeSmartspaceMode = PreferenceCacheExtensionsKt
-                .firstCached(mPreferenceManager2.getSmartspaceMode());
-        if (!activeSmartspaceMode.isAvailable(this.mLauncher)) {
-            activeSmartspaceMode = LawnchairSmartspace.INSTANCE;
+        final WorkspaceHeaderProvider hostHeader = LawnchairWorkspaceHeader.hostProvider();
+        if (mFirstPagePinnedItem == null && hostHeader != null) {
+            // The host's own view replaces the Smartspace; it is not an app widget.
+            mFirstPagePinnedItem = hostHeader.createView(mLauncher, firstPage);
         }
         if (mFirstPagePinnedItem == null) {
-            if (!PreferenceCacheExtensionsKt.firstCached(mPreferenceManager2.getSmartspaceMode())
-                    .isAvailable(this.mLauncher)) {
+            SmartspaceMode activeSmartspaceMode = PreferenceCacheExtensionsKt
+                .firstCached(mPreferenceManager2.getSmartspaceMode());
+            if (!activeSmartspaceMode.isAvailable(this.mLauncher)) {
                 // The current smartspace mode is not available,
                 // setting the smartspace mode to one that is always available
+                activeSmartspaceMode = LawnchairSmartspace.INSTANCE;
                 com.patrykmichalik.opto.core.PreferenceExtensionsKt.setBlocking(mPreferenceManager2.getSmartspaceMode(), activeSmartspaceMode);
             }
             // In transposed layout, we add the first page pinned widget in the Grid.
@@ -687,9 +692,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         }
 
         int cellHSpan = mLauncher.getDeviceProfile().inv.numColumns;
-        int cellVSpan = Math.min(activeSmartspaceMode.getSpanY(),
-                Math.max(1, mLauncher.getDeviceProfile().inv.numRows));
-        CellLayoutLayoutParams lp = new CellLayoutLayoutParams(0, 0, cellHSpan, cellVSpan);
+        CellLayoutLayoutParams lp = new CellLayoutLayoutParams(0, 0, cellHSpan, headerRows);
         lp.canReorder = false;
         if (!firstPage.addViewToCellLayout(
                 mFirstPagePinnedItem, 0, R.id.search_container_workspace, lp, true)) {
@@ -1124,7 +1127,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                     id, persistedScreenIds, isExtraEmptyScreen(id))) {
                 continue;
             }
-            if ((!PreferenceCacheExtensionsKt.firstCached(PreferenceManager2.INSTANCE.get(getContext()).getEnableSmartspace(), PreferenceManager2.INSTANCE.get(getContext())) || id > FIRST_SCREEN_ID)
+            if ((!LawnchairWorkspaceHeader.isEnabled(getContext()) || id > FIRST_SCREEN_ID)
                     && cl.getShortcutsAndWidgets().getChildCount() == 0) {
                 removeScreens.add(id);
             }
@@ -1352,7 +1355,12 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
         mXDown = ev.getX();
         mYDown = ev.getY();
-        if (mFirstPagePinnedItem != null) {
+        final WorkspaceHeaderProvider hostHeader = LawnchairWorkspaceHeader.hostProvider();
+        if (mFirstPagePinnedItem != null
+                && hostHeader != null && !hostHeader.consumesHorizontalDrags()) {
+            // A host header does not scroll sideways, so a drag from it still pages the workspace.
+            mIsEventOverFirstPagePinnedItem = false;
+        } else if (mFirstPagePinnedItem != null) {
             final float[] tempFXY = new float[2];
             tempFXY[0] = mXDown;
             tempFXY[1] = mYDown;

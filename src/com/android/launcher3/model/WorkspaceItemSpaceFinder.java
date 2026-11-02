@@ -98,9 +98,7 @@ public class WorkspaceItemSpaceFinder {
         // First check the preferred screen.
         IntSet screensToExclude = new IntSet();
         
-        PreferenceManager2 prefs = PreferenceManager2.INSTANCE.get(context);
-        boolean smartspaceEnabled = PreferenceCacheExtensionsKt.firstCached(prefs.getEnableSmartspace());
-        if (smartspaceEnabled) {
+        if (app.lawnchair.workspaceheader.LawnchairWorkspaceHeader.isEnabled(context)) {
             screensToExclude.add(FIRST_SCREEN_ID);
         }
 

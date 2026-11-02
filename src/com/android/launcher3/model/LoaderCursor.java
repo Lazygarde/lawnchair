@@ -648,14 +648,13 @@ public class LoaderCursor extends CursorWrapper {
 
         if (!mOccupied.containsKey(item.screenId)) {
             GridOccupancy screen = new GridOccupancy(countX + 1, countY + 1);
-            if (item.screenId == Workspace.FIRST_SCREEN_ID && PreferenceCacheExtensionsKt.firstCached(preferenceManager2.getEnableSmartspace())) {
-                // Mark the first X columns (X is width of the search container) in the first row as
-                // occupied (if the feature is enabled) in order to account for the search
-                // container.
-                int spanX = mIDP.numSearchContainerColumns;
-                int spanY = Math.min(
-                        PreferenceCacheExtensionsKt.firstCached(preferenceManager2.getSmartspaceMode()).getSpanY(),
-                        Math.max(1, countY));
+            final int headerRows = app.lawnchair.workspaceheader.LawnchairWorkspaceHeader.reservedRows(mContext);
+            if (item.screenId == Workspace.FIRST_SCREEN_ID && headerRows > 0) {
+                // Mark the first X columns (X is width of the search container) in the first
+                // rows as occupied (if the feature is enabled) in order to account for the
+                // search container, or the host's taller header.
+                int spanX = app.lawnchair.workspaceheader.LawnchairWorkspaceHeader.hostProvider() != null ? countX : mIDP.numSearchContainerColumns;
+                int spanY = headerRows;
                 screen.markCells(0, 0, spanX, spanY, true);
             }
             mOccupied.put(item.screenId, screen);

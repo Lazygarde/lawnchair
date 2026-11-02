@@ -398,14 +398,12 @@ public class GridSizeMigrationDBController {
             @NonNull final DbReader srcReader, @NonNull final DbReader destReader,
             final int screenId, final int trgX, final int trgY,
             @NonNull final List<DbEntry> sortedItemsToPlace, List<Integer> idsInUse, Context context) {
-        PreferenceManager2 prefs2 = PreferenceManager2.INSTANCE.get(context);
-        
-        boolean smartspaceEnabled = PreferenceCacheExtensionsKt.firstCached(prefs2.getEnableSmartspace());
-        
+        final int headerRows = app.lawnchair.workspaceheader.LawnchairWorkspaceHeader.reservedRows(context);
+
         final GridOccupancy occupied = new GridOccupancy(trgX, trgY);
         final Point trg = new Point(trgX, trgY);
         final Point next = new Point(0,
-                screenId == 0 && smartspaceEnabled ? 1 /* smartspace */ : 0);
+                screenId == 0 ? headerRows /* smartspace or host header */ : 0);
         List<DbEntry> existedEntries = destReader.mWorkspaceEntriesByScreenId.get(screenId);
         if (existedEntries != null) {
             for (DbEntry entry : existedEntries) {

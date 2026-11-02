@@ -34,6 +34,7 @@ import com.android.launcher3.util.IntArray
 import com.android.launcher3.util.IntSet
 import com.android.launcher3.util.ItemInfoMatcher
 import app.lawnchair.preferences2.firstCached
+import app.lawnchair.workspaceheader.LawnchairWorkspaceHeader
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.stream.Stream
 import java.util.stream.StreamSupport
@@ -47,8 +48,7 @@ sealed class WorkspaceData : Iterable<ItemInfo> {
     /** Creates an array of valid workspace screens based on current items in the model. */
     // LC-Note: Add context to replace QSB_ON_FIRST_SCREEN config
     fun collectWorkspaceScreens(context: Context): IntArray {
-        val prefs2 = PreferenceManager2.INSTANCE.get(context)
-        val smartspaceEnabled = prefs2.enableSmartspace.firstCached()
+        val smartspaceEnabled = LawnchairWorkspaceHeader.isEnabled(context)
 
         val screenSet = IntSet()
         forEach { if (it.container == CONTAINER_DESKTOP) screenSet.add(it.screenId) }

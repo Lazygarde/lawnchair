@@ -45,6 +45,7 @@ import com.android.launcher3.util.CellAndSpan
 import com.android.launcher3.util.GridOccupancy
 import com.android.launcher3.util.IntArray
 import app.lawnchair.preferences2.firstCached
+import app.lawnchair.workspaceheader.LawnchairWorkspaceHeader
 
 class GridSizeMigrationLogic {
     /**
@@ -512,15 +513,12 @@ class GridSizeMigrationLogic {
         val occupied = GridOccupancy(trgX, trgY)
         val trg = Point(trgX, trgY)
 
-        val prefs2 = PreferenceManager2.INSTANCE.get(context)
-
-        val next: Point =
-            if (screenId == 0 && prefs2.enableSmartspace.firstCached()) {
-                val smartspaceRows = prefs2.smartspaceMode.firstCached().spanY.coerceAtMost(maxOf(1, trgY))
-                Point(0, smartspaceRows /* smartspace */)
-            } else {
-                Point(0, 0)
-            }
+        val headerRows = if (screenId == 0) {
+            LawnchairWorkspaceHeader.reservedRows(context).coerceAtMost(maxOf(1, trgY))
+        } else {
+            0
+        }
+        val next = Point(0, headerRows /* smartspace or host header */)
         if (existedEntries != null) {
             for (entry in existedEntries) {
                 occupied.markCells(entry, true)
