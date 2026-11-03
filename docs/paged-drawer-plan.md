@@ -14,7 +14,7 @@
 |---|---|
 | "Tabs" | Horizontal pages of a fixed grid with page dots (One UI style), not category tabs |
 | Order | Oldest install first; a new install goes to the last free cell. Once the user moves an app the whole order is theirs, and later installs still append at the end |
-| Drag | Long press then drag rearranges inside the drawer; touching the left or right edge flips the page; dropping on an "Add to Home" bar at the top hands the drag to the workspace as today |
+| Drag | Long press then drag rearranges inside the drawer; touching the left or right edge flips the page; dragging to the top hands the drag to the home screen, whose top bar then reads Cancel (One UI behaviour). The drawer has no empty pages, so One UI's "+" page dot is not built: dropping past the last app puts it last |
 | Grid | Columns = `DeviceProfile.numShownAllAppsColumns`; rows = as many full rows as fit the drawer height (no half rows); apps per page = columns × rows. No new setting |
 
 ## Global Constraints
@@ -171,16 +171,24 @@ Note `savedOrderWins_newInstallAppendsAtEnd`: `new` has the oldest install time 
 **Files:**
 - Create: `lawnchair/src/app/lawnchair/allapps/paged/AddToHomeBar.kt`
 - Modify: `src/com/android/launcher3/allapps/ActivityAllAppsContainerView.java` (show the bar over the search bar during a paged drag)
+- Modify: `src/com/android/launcher3/ButtonDropTarget.java` (`isDropEnabled`, line 249)
 - Modify: `lawnchair/res/values/strings.xml` (`paged_drawer_add_to_home` = "Add to Home screen")
+
+Reference: One UI. In the drawer, a drag rearranges; dragged to the top it leaves for the home screen. On the home screen the top bar then reads **Cancel**: dropping there puts nothing on the home screen.
+
+Upstream already gives the second half. `DeleteDropTarget.setTextBasedOnDragSource` (line 112) labels the button `android.R.string.cancel` when `canRemove(item)` is false, which it is for an app dragged from the drawer (`AppInfo.id == NO_ID`, and also under deck layout, where applications are never removable). Dropping on Cancel ends the drag with nothing added. So this task builds the hand-off and keeps that path intact; it does not build a Cancel target.
+
+The trap: `drop_target_bar` sits **under** `apps_view` in `res/layout/launcher.xml` (lines 62 and 77), and `DropTargetBar.onDragStart` shows it for every drag. While the drawer is open its Remove / Uninstall / App info buttons are invisible but still hit-tested, so a drop at the top of the drawer would land on one of them.
 
 **Interfaces:**
 - Consumes: `DragOptions.fromPagedDrawer` (Task 4).
-- Produces: `AddToHomeBar : DropTarget`, visible only during a drag with `fromPagedDrawer`.
+- Produces: `AddToHomeBar : DropTarget`, drawn over the search bar, visible only during a drag with `fromPagedDrawer` while in `ALL_APPS`.
 
-- [ ] **Step 1:** Show the bar over the search bar on `onDragStart`, hide on `onDragEnd`.
-- [ ] **Step 2:** On `onDragEnter`, after 400 ms of hover (an `Alarm`, as `Folder.mOnExitAlarm`), call `launcher.stateManager.goToState(SPRING_LOADED)`; the workspace's own drop targets take the drag from there, so a drop lands on the home screen exactly as a drag from today's drawer does. The drawer's order is not written.
-- [ ] **Step 3: On a device:** drag to the bar, home screen appears, drop on a free cell (shortcut created, app still in the drawer at its place), drop on a full page (normal workspace behaviour).
-- [ ] **Step 4: Commit** — `feat(drawer): add to Home from the paged drawer`.
+- [ ] **Step 1:** `ButtonDropTarget.isDropEnabled()` also returns false while the launcher is in `ALL_APPS` (`// LC:`). Check on a device that dropping at the very top of the drawer neither uninstalls nor opens App info.
+- [ ] **Step 2:** Show `AddToHomeBar` over the search bar on `onDragStart` of a paged drag, hide it on `onDragEnd` or once the state leaves `ALL_APPS`.
+- [ ] **Step 3:** On `onDragEnter`, after 400 ms of hover (an `Alarm`, as `Folder.mOnExitAlarm`), call `launcher.stateManager.goToState(SPRING_LOADED)`. The drag object carries on; the workspace and the now visible `DropTargetBar` take it, so the bar reads Cancel, and a drop on a cell adds the app exactly as a drag from today's drawer does. The drawer's order is not written on either path.
+- [ ] **Step 4: On a device:** drag to the top, home screen appears with Cancel at the top; drop on Cancel (home unchanged, app still in its drawer cell, drawer order unchanged); drop on a free cell (shortcut added); drop on a full page (normal workspace behaviour); drag a home screen icon (its top bar still reads Remove, unchanged).
+- [ ] **Step 5: Commit** — `feat(drawer): add to Home from the paged drawer`.
 
 ### Task 6: Host guide, local test in Holy Quran, PR
 
