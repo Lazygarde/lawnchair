@@ -46,6 +46,8 @@ import androidx.annotation.Nullable;
 
 import com.android.launcher3.accessibility.DragAndDropAccessibilityDelegate;
 import com.android.launcher3.celllayout.CellLayoutLayoutParams;
+import com.android.launcher3.dragndrop.DragController;
+import com.android.launcher3.dragndrop.DragOptions;
 import com.android.launcher3.pageindicators.PageIndicatorDots;
 import com.android.launcher3.util.HorizontalInsettableView;
 import com.android.launcher3.util.MultiPropertyFactory;
@@ -55,10 +57,13 @@ import com.android.launcher3.util.MultiValueAlpha;
 import com.android.launcher3.views.ActivityContext;
 
 import java.io.PrintWriter;
+import java.util.ArrayList;
+import java.util.List;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 
 import app.lawnchair.hotseat.DisabledHotseat;
+import app.lawnchair.hotseat.DockCentering;
 import app.lawnchair.hotseat.HotseatMode;
 import app.lawnchair.hotseat.HotseatPagedView;
 import app.lawnchair.hotseat.LawnchairHotseat;
@@ -70,7 +75,7 @@ import app.lawnchair.preferences2.PreferenceManager2;
  * View class that represents the bottom dock of the home screen.
  * Hosts a {@link app.lawnchair.hotseat.HotseatPagedView} of icon grids plus an optional QSB.
  */
-public class Hotseat extends FrameLayout implements Insettable {
+public class Hotseat extends FrameLayout implements Insettable, DragController.DragListener {
 
     public static final int ALPHA_CHANNEL_TASKBAR_ALIGNMENT = 0;
     public static final int ALPHA_CHANNEL_PREVIEW_RENDERER = 1;
@@ -117,6 +122,11 @@ public class Hotseat extends FrameLayout implements Insettable {
 
     private final ActivityContext mActivity;
 
+    // LC: centered dock (config_dock_centered_columns): icons sit centered as a group, and spread
+    // to their real slots while something is dragged so a drop lands where it shows
+    private final boolean mDockCenteredEnabled;
+    private boolean mDockSpread;
+
     PreferenceManager2 preferenceManager2;
     PreferenceManager preferenceManager;
 
@@ -131,6 +141,7 @@ public class Hotseat extends FrameLayout implements Insettable {
     public Hotseat(Context context, AttributeSet attrs, int defStyle) {
         super(context, attrs, defStyle);
         mActivity = ActivityContext.lookupContext(context);
+        mDockCenteredEnabled = getResources().getInteger(R.integer.config_dock_centered_columns) > 0;
 
         preferenceManager2 = PreferenceManager2.getInstance(context);
         preferenceManager = PreferenceManager.getInstance(context);
@@ -239,6 +250,7 @@ public class Hotseat extends FrameLayout implements Insettable {
         InsetDrawable bg = new InsetDrawable(background,
                 insetHorizontalLeft, insetVerticalTop, insetHorizontalRight, insetVerticalBottom);
         setBackground(bg);
+        updateDockBackground(); // LC
     }
 
     /** Provides translation X for hotseat icons for the channel. */
@@ -361,7 +373,97 @@ public class Hotseat extends FrameLayout implements Insettable {
                 }
             }
         }
+
+        // LC: centered dock, through the same translation hook as the bubble bar (which never
+        // applies together with it, see isDockCentered)
+        if (isDockCentered()) {
+            for (CellLayout page : getPageLayouts()) {
+                page.getShortcutsAndWidgets().setTranslationProvider(
+                        cellX -> mDockSpread ? 0 : getDockCenteredTranslation(page, cellX));
+            }
+        }
     }
+
+    /**
+     * LC: whether the dock centers its icons: the host asked for it, and the dock is one
+     * horizontal row on one page with no bubble bar to make room for.
+     */
+    private boolean isDockCentered() {
+        DeviceProfile dp = mActivity.getDeviceProfile();
+        return mDockCenteredEnabled && !mHasVerticalHotseat
+                && dp.numHotseatRows == 1 && dp.numHotseatPages == 1
+                && !dp.shouldAdjustHotseatForBubbleBar(getContext(), mActivity.hasBubbles());
+    }
+
+    /** LC: translation that puts the icon at {@code cellX} in its place in the centered group. */
+    private float getDockCenteredTranslation(CellLayout page, int cellX) {
+        ShortcutAndWidgetContainer icons = page.getShortcutsAndWidgets();
+        List<Integer> lefts = new ArrayList<>();
+        int index = -1;
+        for (int i = 0; i < icons.getChildCount(); i++) {
+            CellLayoutLayoutParams lp = (CellLayoutLayoutParams) icons.getChildAt(i).getLayoutParams();
+            if (lp.getCellX() == cellX) index = lefts.size();
+            lefts.add(lp.x);
+        }
+        if (index < 0) return 0;
+        return DockCentering.INSTANCE.offsets(lefts, page.getCountX(), page.getCellWidth(),
+                page.mBorderSpace.x).get(index);
+    }
+
+    /** LC: slides the dock's icons to their real slots ({@code spread}) or back to centered. */
+    private void animateDockSpread(boolean spread) {
+        mDockSpread = spread;
+        AnimatorSet animatorSet = new AnimatorSet();
+        for (CellLayout page : getPageLayouts()) {
+            ShortcutAndWidgetContainer icons = page.getShortcutsAndWidgets();
+            for (int i = 0; i < icons.getChildCount(); i++) {
+                View child = icons.getChildAt(i);
+                if (child instanceof Reorderable
+                        && child.getLayoutParams() instanceof CellLayoutLayoutParams lp) {
+                    float tx = spread ? 0 : getDockCenteredTranslation(page, lp.getCellX());
+                    animatorSet.play(((Reorderable) child).getTranslateDelegate()
+                            .getTranslationX(INDEX_BUBBLE_ADJUSTMENT_ANIM).animateToValue(tx));
+                }
+            }
+        }
+        animatorSet.setDuration(BUBBLE_BAR_ADJUSTMENT_ANIMATION_DURATION_MS).start();
+        updateDockBackground();
+    }
+
+    /** LC: an empty centered dock shows no background, except while something is dragged. */
+    private void updateDockBackground() {
+        if (getBackground() == null) return;
+        int iconCount = 0;
+        for (CellLayout page : getPageLayouts()) {
+            iconCount += page.getShortcutsAndWidgets().getChildCount();
+        }
+        boolean hidden = isDockCentered() && !mDockSpread && iconCount == 0;
+        getBackground().setAlpha(hidden ? 0 : 255);
+    }
+
+    @Override
+    public void onDragStart(DropTarget.DragObject dragObject, DragOptions options) {
+        if (isDockCentered()) animateDockSpread(true);
+    }
+
+    @Override
+    public void onDragEnd() {
+        // After the drop's layout pass, so a dropped icon is counted in its slot.
+        if (isDockCentered()) post(() -> animateDockSpread(false));
+    }
+
+    @Override
+    protected void onAttachedToWindow() {
+        super.onAttachedToWindow();
+        if (mDockCenteredEnabled) mActivity.getDragController().addDragListener(this);
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        if (mDockCenteredEnabled) mActivity.getDragController().removeDragListener(this);
+        super.onDetachedFromWindow();
+    }
+
 
     /**
      * Adjust the hotseat icons for the bubble bar.
@@ -572,6 +674,7 @@ public class Hotseat extends FrameLayout implements Insettable {
         DeviceProfile dp = mActivity.getDeviceProfile();
         mIconsContainer.layout(paddingLeft, paddingTop, width - paddingRight,
                 height - paddingBottom);
+        if (mDockCenteredEnabled) updateDockBackground(); // LC: icons bound, added or removed
 
         int containerWidth = mIconsContainer.getWidth();
         int containerHeight = mIconsContainer.getHeight();

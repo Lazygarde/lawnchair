@@ -26,6 +26,7 @@ import app.lawnchair.util.getApkVersionComparison
 import app.lawnchair.util.isGestureNavContractCompatible
 import app.lawnchair.util.isOnePlusStock
 import com.android.launcher3.InvariantDeviceProfile
+import com.android.launcher3.R
 import com.android.launcher3.InvariantDeviceProfile.INDEX_DEFAULT
 import com.android.launcher3.LauncherAppState
 import com.android.launcher3.dagger.ApplicationContext
@@ -231,6 +232,12 @@ class PreferenceManager @Inject constructor(
             }
         }
         normalizeVibrationFeedbackLevel()
+        // LC: a host-fixed centered dock (config_dock_centered_columns) sets the dock size; a
+        // change runs Launcher3's grid migration on the next grid load, keeping every app
+        val dockColumns = context.resources.getInteger(R.integer.config_dock_centered_columns)
+        if (dockColumns > 0 && hotseatColumns.get() != dockColumns) {
+            hotseatColumns.set(dockColumns)
+        }
     }
 
     companion object {

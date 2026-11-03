@@ -48,6 +48,13 @@
     -->
     <bool name="config_drawer_paged" translatable="false">false</bool>
 
+    <!--
+      Centered dock: when above 0, the dock has this many slots and its icons sit centered as a
+      group, so a dock with fewer apps shows no empty slot. 0 keeps the dock as it is.
+      See docs/dock-centered-plan.md.
+    -->
+    <integer name="config_dock_centered_columns">0</integer>
+
     <!-- Minimum search query length before the host is asked for search slot items. -->
     <integer name="config_drawer_slot_search_min_query" translatable="false">2</integer>
 
