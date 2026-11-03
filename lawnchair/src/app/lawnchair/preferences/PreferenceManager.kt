@@ -219,6 +219,14 @@ class PreferenceManager @Inject constructor(
     }
 
     init {
+        // LC: a host-fixed centered dock (config_dock_centered_columns) sets the dock size; a
+        // change runs Launcher3's grid migration on the next grid load, keeping every app. Set
+        // before the listener: a reloadGrid from inside this constructor would build a second
+        // PreferenceManager (the grid is not loaded yet, so nothing needs reloading).
+        val dockColumns = context.resources.getInteger(R.integer.config_dock_centered_columns)
+        if (dockColumns > 0 && hotseatColumns.get() != dockColumns) {
+            hotseatColumns.set(dockColumns)
+        }
         sp.registerOnSharedPreferenceChangeListener(this)
         migratePrefs(CURRENT_VERSION) { oldVersion ->
             if (oldVersion < 2) {
@@ -232,12 +240,6 @@ class PreferenceManager @Inject constructor(
             }
         }
         normalizeVibrationFeedbackLevel()
-        // LC: a host-fixed centered dock (config_dock_centered_columns) sets the dock size; a
-        // change runs Launcher3's grid migration on the next grid load, keeping every app
-        val dockColumns = context.resources.getInteger(R.integer.config_dock_centered_columns)
-        if (dockColumns > 0 && hotseatColumns.get() != dockColumns) {
-            hotseatColumns.set(dockColumns)
-        }
     }
 
     companion object {

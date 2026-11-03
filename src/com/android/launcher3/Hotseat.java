@@ -41,6 +41,7 @@ import android.view.ViewDebug;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
+import androidx.core.view.OneShotPreDrawListener;
 import androidx.annotation.IntDef;
 import androidx.annotation.Nullable;
 
@@ -448,8 +449,13 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
 
     @Override
     public void onDragEnd() {
-        // After the drop's layout pass, so a dropped icon is counted in its slot.
-        if (isDockCentered()) post(() -> animateDockSpread(false));
+        // After the drop's layout pass, so a dropped icon is ranked by its slot, not where it was.
+        if (isDockCentered()) {
+            OneShotPreDrawListener.add(this, () -> animateDockSpread(false));
+            requestLayout();
+        } else {
+            mDockSpread = false;
+        }
     }
 
     @Override
