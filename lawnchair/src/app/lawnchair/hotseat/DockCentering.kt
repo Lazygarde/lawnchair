@@ -1,8 +1,9 @@
 package app.lawnchair.hotseat
 
 /**
- * Offsets that center the dock's icons as a group (`config_dock_centered_columns`), so a dock
- * with fewer icons than slots shows no empty slot.
+ * Offsets that spread the dock's icons evenly (`config_dock_centered_columns`), so a dock with
+ * fewer icons than slots shows no empty slot: the first icon at the left edge, the last at the
+ * right edge, the rest evenly between; a single icon in the middle.
  */
 object DockCentering {
 
@@ -13,11 +14,12 @@ object DockCentering {
     fun offsets(lefts: List<Int>, cols: Int, cellWidth: Int, border: Int): List<Float> {
         val n = lefts.size
         if (n == 0) return emptyList()
-        val stride = cellWidth + border
-        val contentWidth = cols * cellWidth + (cols - 1) * border
-        val groupWidth = n * cellWidth + (n - 1) * border
-        val start = (contentWidth - groupWidth) / 2f
+        // Room the icons' lefts can range over: from the first slot to the last.
+        val span = (cols * cellWidth + (cols - 1) * border - cellWidth).toFloat()
         val rank = lefts.indices.sortedBy { lefts[it] }.withIndex().associate { (r, i) -> i to r }
-        return lefts.mapIndexed { i, left -> start + rank.getValue(i) * stride - left }
+        return lefts.mapIndexed { i, left ->
+            val target = if (n == 1) span / 2 else rank.getValue(i) * span / (n - 1)
+            target - left
+        }
     }
 }
