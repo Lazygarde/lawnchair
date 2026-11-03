@@ -320,6 +320,12 @@ class PreferenceManager2 @Inject constructor(
         defaultValue = setOf(),
     )
 
+    /** Paged drawer order: ComponentKey strings joined by '\n'; empty until the user moves an app. */
+    val drawerOrder = preference(
+        key = stringPreferencesKey(name = "drawer_order"),
+        defaultValue = "",
+    )
+
     val roundedWidgets = preference(
         key = booleanPreferencesKey(name = "rounded_widgets"),
         defaultValue = context.resources.getBoolean(R.bool.config_default_rounded_widgets),

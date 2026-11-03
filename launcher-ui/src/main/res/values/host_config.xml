@@ -41,6 +41,13 @@
     -->
     <bool name="config_enable_drawer_slots" translatable="false">false</bool>
 
+    <!--
+      Paged app drawer: horizontal pages of a fixed grid, apps in install order, rearranged by
+      dragging inside the drawer. Only used without a work profile or private space; search keeps
+      the vertical list. See docs/paged-drawer-guide.md.
+    -->
+    <bool name="config_drawer_paged" translatable="false">false</bool>
+
     <!-- Minimum search query length before the host is asked for search slot items. -->
     <integer name="config_drawer_slot_search_min_query" translatable="false">2</integer>
 
