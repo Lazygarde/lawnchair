@@ -487,7 +487,9 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
         int width = page.getWidth() - page.getPaddingLeft() - page.getPaddingRight();
         int cols = others.size() + (mDockGapCell >= 0 ? 1 : 0);
         float px = x - page.getPaddingLeft();
-        float core = mActivity.getDeviceProfile().iconSizePx / 2f;
+        // Only the middle of an icon holds the gap still (for a folder): at half an icon, large
+        // icons left a few pixels between them and the gap stuck where it first opened.
+        float core = mActivity.getDeviceProfile().iconSizePx / 4f;
         int before = 0;
         for (int j = 0; j < others.size(); j++) {
             int cell = mDockGapCell >= 0 && j >= mDockGapCell ? j + 1 : j;
