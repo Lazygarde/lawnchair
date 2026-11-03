@@ -119,6 +119,7 @@ import static com.topjohnwu.superuser.internal.Utils.context;
 import app.lawnchair.drawerslots.DrawerSlotController;
 import app.lawnchair.drawerslots.HostSlotFooter;
 import app.lawnchair.allapps.LawnchairAlphabeticalAppsList;
+import app.lawnchair.allapps.paged.AllAppsPagedGrid;
 import app.lawnchair.font.FontManager;
 import app.lawnchair.preferences.PreferenceManager;
 import app.lawnchair.preferences2.PreferenceManager2;
@@ -183,6 +184,9 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
     private final Path mTmpPath = new Path();
     private final RectF mTmpRectF = new RectF();
     protected AllAppsPagedView mViewPager;
+    // LC: paged drawer (config_drawer_paged); null unless the host turned it on
+    @Nullable private View mPagedContainer;
+    @Nullable private AllAppsPagedGrid mPagedGrid;
     protected FloatingHeaderView mHeader;
     protected final List<AllAppsRow> mAdditionalHeaderRows = new ArrayList<>();
     // LC: host drawer slots (header row is an AllAppsRow, footer is a fixed bottom slot)
@@ -631,6 +635,10 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         if (dragLayer.isEventOverView(mBottomSheetHandleArea, ev)) {
             return true;
         }
+        // LC: the paged grid never scrolls vertically, so a vertical swipe always moves the sheet
+        if (isPagedDrawerShown()) {
+            return true;
+        }
         AllAppsRecyclerView rv = getActiveRecyclerView();
         if (rv == null) {
             return true;
@@ -899,6 +907,12 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
                 adapterHolder.mRecyclerView.setAdapter(null);
             }
         }
+        // LC: the paged grid sits beside the A-Z list and is rebuilt with it
+        if (mPagedContainer != null) {
+            removeView(mPagedContainer);
+            mPagedContainer = null;
+            mPagedGrid = null;
+        }
         View oldView = getAppsRecyclerViewContainer();
         int index = indexOfChild(oldView);
         removeView(oldView);
@@ -943,7 +957,49 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             layoutBelowSearchContainer(getSearchRecyclerView(), /* tabs= */ false);
         }
 
+        // LC: paged drawer, in the same place as the list, which it hides while it is used
+        if (!showTabs && getResources().getBoolean(R.bool.config_drawer_paged)) {
+            mPagedContainer = getLayoutInflater().inflate(R.layout.all_apps_paged_grid, this, false);
+            mPagedContainer.setLayoutParams(new RelativeLayout.LayoutParams(
+                    (RelativeLayout.LayoutParams) rvContainer.getLayoutParams()));
+            addView(mPagedContainer, indexOfChild(rvContainer) + 1);
+            mPagedGrid = mPagedContainer.findViewById(R.id.all_apps_paged_grid);
+            mPagedGrid.setPageIndicator(mPagedContainer.findViewById(R.id.all_apps_paged_indicator));
+            if (mAH.get(AdapterHolder.MAIN).mAppsList instanceof LawnchairAlphabeticalAppsList<?> list) {
+                list.setOnPagedAppsChanged(apps -> {
+                    mPagedGrid.bind(apps);
+                    updatePagedVisibility();
+                    return kotlin.Unit.INSTANCE;
+                });
+                mPagedGrid.bind(list.pagedApps());
+            }
+        }
+
         updateSearchResultsVisibility();
+    }
+
+    /** LC: true while the paged grid stands in for the A-Z list. */
+    public boolean isPagedDrawerShown() {
+        return mPagedContainer != null && mPagedContainer.getVisibility() == VISIBLE;
+    }
+
+    // LC: show the paged grid instead of the A-Z list when the list is in paged mode and no search
+    private void updatePagedVisibility() {
+        if (mPagedContainer == null) return;
+        boolean paged = !mUsingTabs && !isSearching()
+                && mAH.get(AdapterHolder.MAIN).mAppsList instanceof LawnchairAlphabeticalAppsList<?> list
+                && list.isPagedMode();
+        View rv = findViewById(R.id.apps_list_view);
+        mPagedContainer.setVisibility(paged ? VISIBLE : GONE);
+        if (paged) {
+            if (rv != null) {
+                mPagedContainer.setPadding(0, rv.getPaddingTop(), 0, rv.getPaddingBottom());
+                rv.setVisibility(GONE);
+            }
+            mFastScroller.setVisibility(GONE);
+        } else if (rv != null && !isSearching()) {
+            rv.setVisibility(VISIBLE);
+        }
     }
 
     void setupHeader() {
@@ -1586,6 +1642,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             mHeader.setActiveRV(getCurrentPage());
         }
         updateHostSlotFooter(); // LC
+        updatePagedVisibility(); // LC
     }
 
     private void applyAdapterSideAndBottomPaddings(DeviceProfile grid) {
