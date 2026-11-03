@@ -2594,6 +2594,10 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             mDragTargetLayout.onDragExit();
         }
         mDragTargetLayout = layout;
+        // LC: a spread dock opens a free cell while an app is dragged over it
+        if (mLauncher.getHotseat() != null) {
+            mLauncher.getHotseat().onDockDropLayoutChanged(layout);
+        }
         if (mDragTargetLayout != null) {
             mDragTargetLayout.onDragEnter();
         }

@@ -21,6 +21,7 @@ package com.android.launcher3;
 import static android.view.View.MeasureSpec.makeMeasureSpec;
 
 import static com.android.launcher3.LauncherAnimUtils.VIEW_TRANSLATE_X;
+import static com.android.launcher3.LauncherSettings.Favorites.CONTAINER_HOTSEAT;
 import static com.android.launcher3.util.MultiTranslateDelegate.INDEX_BUBBLE_ADJUSTMENT_ANIM;
 
 import android.animation.AnimatorSet;
@@ -47,6 +48,7 @@ import androidx.annotation.Nullable;
 
 import com.android.launcher3.accessibility.DragAndDropAccessibilityDelegate;
 import com.android.launcher3.celllayout.CellLayoutLayoutParams;
+import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.dragndrop.DragController;
 import com.android.launcher3.dragndrop.DragOptions;
 import com.android.launcher3.pageindicators.PageIndicatorDots;
@@ -123,10 +125,12 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
 
     private final ActivityContext mActivity;
 
-    // LC: centered dock (config_dock_centered_columns): icons sit centered as a group, and spread
-    // to their real slots while something is dragged so a drop lands where it shows
+    // LC: dock spread edge to edge (config_dock_centered_columns), one cell per icon; a free cell
+    // opens while an app from elsewhere is dragged over it
     private final boolean mDockCenteredEnabled;
-    private boolean mDockSpread;
+    private boolean mDockDragging;
+    private boolean mDragFromDock;
+    private boolean mDockOpenForDrop;
 
     PreferenceManager2 preferenceManager2;
     PreferenceManager preferenceManager;
@@ -375,18 +379,18 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
             }
         }
 
-        // LC: centered dock, through the same translation hook as the bubble bar (which never
-        // applies together with it, see isDockCentered)
+        // LC: dock spread edge to edge, through the same translation hook as the bubble bar
+        // (which never applies together with it, see isDockCentered)
         if (isDockCentered()) {
             for (CellLayout page : getPageLayouts()) {
                 page.getShortcutsAndWidgets().setTranslationProvider(
-                        cellX -> mDockSpread ? 0 : getDockCenteredTranslation(page, cellX));
+                        cellX -> getDockCenteredTranslation(page, cellX));
             }
         }
     }
 
     /**
-     * LC: whether the dock centers its icons: the host asked for it, and the dock is one
+     * LC: whether the dock spreads its icons: the host asked for it, and the dock is one
      * horizontal row on one page with no bubble bar to make room for.
      */
     private boolean isDockCentered() {
@@ -396,66 +400,101 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
                 && !dp.shouldAdjustHotseatForBubbleBar(getContext(), mActivity.hasBubbles());
     }
 
-    /** LC: translation that puts the icon at {@code cellX} in its place in the centered group. */
+    /** LC: shift, inside its own cell, of the icon at {@code cellX} (see DockCentering). */
     private float getDockCenteredTranslation(CellLayout page, int cellX) {
         ShortcutAndWidgetContainer icons = page.getShortcutsAndWidgets();
-        List<Integer> lefts = new ArrayList<>();
-        int index = -1;
         for (int i = 0; i < icons.getChildCount(); i++) {
             CellLayoutLayoutParams lp = (CellLayoutLayoutParams) icons.getChildAt(i).getLayoutParams();
-            if (lp.getCellX() == cellX) index = lefts.size();
-            lefts.add(lp.x);
+            if (lp.getCellX() == cellX) {
+                return DockCentering.INSTANCE.offset(lp.x, page.getCellWidth(), page.getCountX(),
+                        mActivity.getDeviceProfile().numShownHotseatIcons, page.mBorderSpace.x);
+            }
         }
-        if (index < 0) return 0;
-        return DockCentering.INSTANCE.offsets(lefts, page.getCountX(), page.getCellWidth(),
-                page.mBorderSpace.x).get(index);
+        return 0;
     }
 
-    /** LC: slides the dock's icons to their real slots ({@code spread}) or back to centered. */
-    private void animateDockSpread(boolean spread) {
-        mDockSpread = spread;
-        AnimatorSet animatorSet = new AnimatorSet();
-        for (CellLayout page : getPageLayouts()) {
-            ShortcutAndWidgetContainer icons = page.getShortcutsAndWidgets();
-            for (int i = 0; i < icons.getChildCount(); i++) {
-                View child = icons.getChildAt(i);
-                if (child instanceof Reorderable
-                        && child.getLayoutParams() instanceof CellLayoutLayoutParams lp) {
-                    float tx = spread ? 0 : getDockCenteredTranslation(page, lp.getCellX());
-                    animatorSet.play(((Reorderable) child).getTranslateDelegate()
-                            .getTranslationX(INDEX_BUBBLE_ADJUSTMENT_ANIM).animateToValue(tx));
+    /**
+     * LC: gives the dock one cell per icon, packed from the first cell, and saves positions that
+     * moved; {@code withFreeCell} adds an empty cell at the end for an app being dragged in. Run
+     * once binding is done, after a drag, and after apps are removed.
+     */
+    public void updateDockCells(boolean withFreeCell) {
+        if (!isDockCentered()) return;
+        CellLayout page = getCurrentPageLayout();
+        if (page == null) return;
+        ShortcutAndWidgetContainer icons = page.getShortcutsAndWidgets();
+        List<View> children = new ArrayList<>();
+        for (int i = 0; i < icons.getChildCount(); i++) children.add(icons.getChildAt(i));
+        children.sort((a, b) -> Integer.compare(
+                ((CellLayoutLayoutParams) a.getLayoutParams()).getCellX(),
+                ((CellLayoutLayoutParams) b.getLayoutParams()).getCellX()));
+        int maxCols = mActivity.getDeviceProfile().numShownHotseatIcons;
+        int n = children.size();
+        if (!withFreeCell) {
+            for (int i = 0; i < n; i++) {
+                View child = children.get(i);
+                CellLayoutLayoutParams lp = (CellLayoutLayoutParams) child.getLayoutParams();
+                if (lp.getCellX() == i) continue;
+                lp.setCellX(i);
+                if (mActivity instanceof Launcher launcher && child.getTag() instanceof ItemInfo info) {
+                    launcher.getModelWriter().moveItemInDatabase(
+                            info, CONTAINER_HOTSEAT, page.getHotseatPageIndex(), i, 0);
                 }
             }
         }
-        animatorSet.setDuration(BUBBLE_BAR_ADJUSTMENT_ANIMATION_DURATION_MS).start();
+        page.setGridSize(Math.max(1, Math.min(maxCols, n + (withFreeCell ? 1 : 0))), 1);
+        // setGridSize forgets the occupied cells, and the icons' container keeps the old cell
+        // positions unless it is measured again.
+        for (View child : children) page.markCellsAsOccupiedForView(child);
+        icons.requestLayout();
         updateDockBackground();
     }
 
-    /** LC: an empty centered dock shows no background, except while something is dragged. */
+    /**
+     * LC: called as a drag moves between drop layouts. Entering the dock with an app from
+     * elsewhere opens a free cell for it; moving on to a home screen page gives it back.
+     */
+    public void onDockDropLayoutChanged(@Nullable CellLayout layout) {
+        // null comes before every drop (Workspace.onDragExit): keep the free cell for it; the
+        // drag end packs the dock again either way.
+        if (!isDockCentered() || mDragFromDock || layout == null) return;
+        boolean overDock = isHotseatPage(layout);
+        if (overDock != mDockOpenForDrop) {
+            mDockOpenForDrop = overDock;
+            updateDockCells(overDock);
+        }
+    }
+
+    /** LC: an empty dock shows no background, except while something is dragged. */
     private void updateDockBackground() {
         if (getBackground() == null) return;
         int iconCount = 0;
         for (CellLayout page : getPageLayouts()) {
             iconCount += page.getShortcutsAndWidgets().getChildCount();
         }
-        boolean hidden = isDockCentered() && !mDockSpread && iconCount == 0;
+        boolean hidden = isDockCentered() && !mDockDragging && iconCount == 0;
         getBackground().setAlpha(hidden ? 0 : 255);
     }
 
     @Override
     public void onDragStart(DropTarget.DragObject dragObject, DragOptions options) {
-        if (isDockCentered()) animateDockSpread(true);
+        mDockDragging = true;
+        mDragFromDock = dragObject.dragInfo != null
+                && dragObject.dragInfo.container == CONTAINER_HOTSEAT;
+        updateDockBackground();
     }
 
     @Override
     public void onDragEnd() {
-        // After the drop's layout pass, so a dropped icon is ranked by its slot, not where it was.
+        mDockDragging = false;
+        mDockOpenForDrop = false;
+        mDragFromDock = false;
+        // After the drop has landed and laid out, so the dropped icon is counted in its cell.
         if (isDockCentered()) {
-            OneShotPreDrawListener.add(this, () -> animateDockSpread(false));
+            OneShotPreDrawListener.add(this, () -> updateDockCells(false));
             requestLayout();
-        } else {
-            mDockSpread = false;
         }
+        updateDockBackground();
     }
 
     @Override
