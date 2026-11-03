@@ -210,8 +210,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
     @Thunk
     boolean mDeferRemoveExtraEmptyScreen = false;
-    // LC: the current drag started in the paged drawer
-    private boolean mPagedDrawerDrag;
 
     /**
      * CellInfo for the cell that is currently being dragged
@@ -561,7 +559,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             mAccessibilityDragListener.onDragStart(dragObject, options);
         }
         // LC: a drag in the paged drawer keeps the drawer open; Add to Home leaves it later
-        mPagedDrawerDrag = options.fromPagedDrawer;
         if (!mLauncher.isInState(EDIT_MODE) && !options.fromPagedDrawer) {
             mLauncher.getStateManager().goToState(SPRING_LOADED);
         }
@@ -583,7 +580,6 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         if (ENFORCE_DRAG_EVENT_ORDER) {
             enforceDragParity("onDragEnd", 0, 0);
         }
-        mPagedDrawerDrag = false; // LC
 
         updateChildrenLayersEnabled();
         StateManager<LauncherState, Launcher> stateManager = mLauncher.getStateManager();
@@ -3687,8 +3683,7 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
     }
 
     public boolean isDropEnabled() {
-        // LC: under the open paged drawer, a drop that misses the grid must not land on home
-        return !(mPagedDrawerDrag && mLauncher.isInState(ALL_APPS));
+        return true;
     }
 
     @Override

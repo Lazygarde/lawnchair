@@ -76,6 +76,8 @@ public abstract class ButtonDropTarget extends TextView
     protected boolean mActive;
     /** Whether an accessible drag is in progress */
     private boolean mAccessibleDrag;
+    // LC: the current drag started in the paged drawer
+    private boolean mPagedDrawerDrag;
     /** An item must be dragged at least this many pixels before this drop target is enabled. */
     private final int mDragDistanceThreshold;
     /** The size of the drawable shown in the drop target. */
@@ -225,6 +227,7 @@ public abstract class ButtonDropTarget extends TextView
         setVisibility(mActive ? View.VISIBLE : View.GONE);
 
         mAccessibleDrag = options.isAccessibleDrag;
+        mPagedDrawerDrag = options.fromPagedDrawer; // LC
         setOnClickListener(mAccessibleDrag ? this : null);
     }
 
@@ -247,8 +250,8 @@ public abstract class ButtonDropTarget extends TextView
 
     @Override
     public boolean isDropEnabled() {
-        // LC: the bar sits under an open drawer, invisible but still hit-tested; never take a drop there
-        if (mActivityContext instanceof Launcher launcher
+        // LC: under the open paged drawer the bar is invisible but still hit-tested; take no drop there
+        if (mPagedDrawerDrag && mActivityContext instanceof Launcher launcher
                 && launcher.isInState(LauncherState.ALL_APPS)) {
             return false;
         }

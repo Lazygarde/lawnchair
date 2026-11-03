@@ -43,6 +43,10 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
     private var apps: List<AppInfo> = emptyList()
     private val icons = HashMap<String, BubbleTextView>()
 
+    // The keys in the order on screen, and whether a bind came in mid-drag.
+    private var shownKeys: List<String> = emptyList()
+    private var pendingBind = false
+
     val columns: Int get() = activityContext.deviceProfile.numShownAllAppsColumns
     var rows: Int = 1
         private set
@@ -67,8 +71,15 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
 
     fun bind(apps: List<AppInfo>) {
         this.apps = apps
-        // A rebind mid-drag (an install, say) would lose the dragged icon; the drop rebinds anyway.
-        if (dragKey == null) rebuild()
+        // A rebind mid-drag (an install, say) would lose the dragged icon; it runs after the drop.
+        if (dragKey != null) {
+            pendingBind = true
+            return
+        }
+        // Same apps in the same order (the drop already arranged them, or an unrelated pref
+        // changed): nothing to rebuild; icon changes reach the icons through AllAppsStore.
+        if (apps.map(::keyOf) == shownKeys && icons.size == apps.size) return
+        rebuild()
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
@@ -84,6 +95,8 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
     // ponytail: rebuilds every icon on each bind; reuse views if a large drawer shows jank.
     private fun rebuild() {
         val keepPage = nextPage
+        val store = launcher.appsView.appsStore
+        forEachPage { store.unregisterIconContainer(it.shortcutsAndWidgets) }
         removeAllViews()
         icons.clear()
         val pages = PagedGridMath.pageCount(apps.size, perPage)
@@ -93,10 +106,17 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
             icons[keyOf(app)] = icon
             place(icon, i)
         }
+        shownKeys = apps.map(::keyOf)
+        // Notification dots and install progress reach the icons this way, as for the A-Z list.
+        forEachPage { store.registerIconContainer(it.shortcutsAndWidgets) }
         mPageIndicator?.setMarkersCount(pages)
         mPageIndicator?.visibility = if (pages > 1) VISIBLE else INVISIBLE
         setEnableOverscroll(pages > 1)
         setCurrentPage(keepPage.coerceAtMost(pages - 1))
+    }
+
+    private inline fun forEachPage(action: (CellLayout) -> Unit) {
+        for (i in 0 until childCount) (getChildAt(i) as? CellLayout)?.let(action)
     }
 
     private fun place(icon: View, index: Int) {
@@ -158,8 +178,8 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
     override fun onDragOver(dragObject: DropTarget.DragObject) {
         val order = dragOrder ?: return
         val page = getPageAt(nextPage) as? CellLayout ?: return
-        val xy = floatArrayOf(dragObject.x.toFloat(), dragObject.y.toFloat())
-        launcher.dragLayer.mapCoordInSelfToDescendant(page, xy)
+        // DragController already maps x / y into this view (scroll included); make them page-local.
+        val xy = floatArrayOf(dragObject.x - page.left.toFloat(), dragObject.y - page.top.toFloat())
 
         val cell = IntArray(2)
         page.pointToCellExact(xy[0].toInt(), xy[1].toInt(), cell)
@@ -202,6 +222,7 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
     /** Moves the icons to [order]: an animation within a page, a jump between pages. */
     private fun applyDragOrder(order: List<String>) {
         dragOrder = order
+        shownKeys = order
         order.forEachIndexed { i, key ->
             val icon = icons[key] ?: return@forEachIndexed
             val (x, y) = PagedGridMath.cellOf(i, columns, perPage)
@@ -241,7 +262,11 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         targetIndex = -1
         onDragExit(d)
         // Dropped elsewhere (home screen, Cancel, nowhere): put the drawer back as it was.
-        if (!wasHere) rebuild()
+        // A bind that came in during the drag runs now.
+        if (!wasHere || pendingBind) {
+            pendingBind = false
+            rebuild()
+        }
     }
 
     private fun save(order: List<String>) {

@@ -1014,6 +1014,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             mFastScroller.setVisibility(GONE);
         } else if (rv != null && !isSearching()) {
             rv.setVisibility(VISIBLE);
+            mFastScroller.setVisibility(VISIBLE);
         }
     }
 
@@ -1051,6 +1052,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         } else {
             layoutBelowSearchContainer(mHeader, false /* includeTabsMargin */);
         }
+        updatePagedVisibility(); // LC: the grid takes the new header height too
     }
 
     /**
