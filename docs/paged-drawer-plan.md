@@ -69,7 +69,7 @@
 - Produces:
   - `AppInfo.firstInstallTime: long` (public field, `0` when unknown).
   - `object DrawerOrder { data class Entry(val key: String, val installTime: Long, val label: String); fun merge(saved: List<String>, installed: List<Entry>): List<String>; fun move(order: List<String>, key: String, toIndex: Int): List<String> }`
-  - `merge` returns every installed key exactly once: first the saved keys that are still installed, in saved order; then the rest sorted by `installTime` ascending, ties by `label` (case-insensitive), then by `key`.
+  - `merge` returns every installed key exactly once: first the saved keys that are still installed, in saved order; then the rest sorted by `installTime` ascending (`0`, which a promise app from `AppInfo(PackageInstallInfo)` carries, counts as newest, so it goes last, not first), ties by `label` (case-insensitive), then by `key`.
   - `move` removes `key` and inserts it at `toIndex` clamped to `0..size-1`; returns `order` unchanged if `key` is absent.
 
 - [ ] **Step 1: Write the failing tests**
@@ -81,6 +81,8 @@
     assertEquals(listOf("x", "y"), DrawerOrder.merge(emptyList(), listOf(e("y", 5, "Beta"), e("x", 5, "alpha"))))
 @Test fun savedOrderWins_newInstallAppendsAtEnd() =
     assertEquals(listOf("c", "a", "new"), DrawerOrder.merge(listOf("c", "a"), listOf(e("a", 1), e("c", 2), e("new", 0))))
+@Test fun unknownInstallTime_goesLast() =
+    assertEquals(listOf("a", "p"), DrawerOrder.merge(emptyList(), listOf(e("p", 0), e("a", 10))))
 @Test fun uninstalledKeyIsDropped() =
     assertEquals(listOf("a"), DrawerOrder.merge(listOf("gone", "a"), listOf(e("a", 1))))
 @Test fun move_toFront() = assertEquals(listOf("c", "a", "b"), DrawerOrder.move(listOf("a", "b", "c"), "c", 0))
@@ -145,7 +147,7 @@ Note `savedOrderWins_newInstallAppendsAtEnd`: `new` has the oldest install time 
 
 - [ ] **Step 2: Run, expect FAIL.**
 - [ ] **Step 3: Implement `PagedGridMath`**, then `AllAppsPagedGrid`: one `CellLayout` per page (`CellLayout.FOLDER` type as `FolderPagedView` does), icons are `BubbleTextView` from `R.layout.all_apps_icon` with the drawer's click and long-click listeners, pages rebuilt in `bind`, current page clamped to `pageCount - 1`. Rows come from the height left under the floating header and above the page dots and footer, recomputed in `onSizeChanged` and on IDP change.
-- [ ] **Step 4:** In `ActivityAllAppsContainerView`, when `isPagedMode()` the personal holder shows `AllAppsPagedGrid` instead of its recycler (`// LC:`), and `onAppsUpdated` calls `bind(pagedApps())`. `shouldContainerScroll` returns true for a vertical swipe on the grid (swipe down closes the drawer from any page; horizontal swipes go to the pager). `setListScrolled` returns false in paged mode.
+- [ ] **Step 4:** In `ActivityAllAppsContainerView`, when `isPagedMode()` add `AllAppsPagedGrid` as a sibling of the personal holder's recycler and set the recycler `GONE` (`// LC:`). Do not replace or null the recycler: the file reads `mRecyclerView` 51 times, some without a null check (line 647). Then and `onAppsUpdated` calls `bind(pagedApps())`. `shouldContainerScroll` returns true for a vertical swipe on the grid (swipe down closes the drawer from any page; horizontal swipes go to the pager). `setListScrolled` returns false in paged mode.
 - [ ] **Step 5: Run tests, expect PASS; on a device:** swipe pages, dots follow, tap launches, swipe down closes, search still shows the vertical results, rotate keeps the order.
 - [ ] **Step 6: Commit** — `feat(drawer): paged grid view`.
 
@@ -160,10 +162,11 @@ Note `savedOrderWins_newInstallAppendsAtEnd`: `new` has the oldest install time 
 - Consumes: `DrawerOrder.move`, `PreferenceManager2.drawerOrder` (Tasks 1–2), `PagedGridMath.cellOf` (Task 3).
 - Produces: `AllAppsPagedGrid` implements `DragSource`, `DropTarget`; `DragOptions.fromPagedDrawer: Boolean` (new field, `// LC:`).
 
-- [ ] **Step 1:** In `onAllAppsItemLongClick`, when the view's parent is an `AllAppsPagedGrid`, start the drag with `dragController.startDrag(..., source = grid, options.fromPagedDrawer = true)` instead of `Workspace.beginDragShared`. The popup (`preDragCondition`) stays as it is.
+- [ ] **Step 1:** In `onAllAppsItemLongClick` (line 177), when the view's parent is an `AllAppsPagedGrid`, keep `beginDragShared` but pass the grid as the `DragSource` and a `DragOptions` with `fromPagedDrawer = true`. Preview and popup (`preDragCondition`) stay as they are.
 - [ ] **Step 2:** In `Workspace.onDragStart`, skip `goToState(SPRING_LOADED)` when `options.fromPagedDrawer` (`// LC:`). The drawer stays open.
-- [ ] **Step 3:** Register the grid with `DragController.addDropTarget` while the launcher is in `ALL_APPS`, remove it on leaving. `onDragOver` maps the touch to `(page, x, y)` and calls the page's reorder like `FolderPagedView.realTimeReorder`, debounced with an `Alarm` (150 ms, as `Folder` uses). Within 1 cell width of the left / right edge, flip the page after 500 ms (the workspace's `PagedView` scroll delay). `onDrop` writes `DrawerOrder.move(currentOrder, key, targetIndex)` joined by `\n` to `drawerOrder`. Cancelled drag or drop outside the grid: rebind from the unchanged order, no write.
-- [ ] **Step 4: On a device:** drag within a page, drag across pages by the edge, drop on a gap past the last app (goes to the end), cancel by dropping outside, kill the launcher and reopen (order kept), install a new app (last cell).
+- [ ] **Step 3:** Register the grid with `DragController.addDropTarget` while the launcher is in `ALL_APPS`, remove it on leaving. `onDragOver` maps the touch to `(page, x, y)` and calls the page's reorder like `FolderPagedView.realTimeReorder`, debounced with an `Alarm` (150 ms, as `Folder` uses). Within 1 cell width of the left / right edge, flip the page after 500 ms (the workspace's `PagedView` scroll delay). `onDrop` writes `DrawerOrder.move(displayed, key, targetIndex)`, where `displayed` is the full merged order the grid shows (every key, from `DrawerOrder.merge`), not the saved pref: the pref is empty until the first move, and `move` on an empty list does nothing. So the first drop persists the whole order. joined by `\n` to `drawerOrder`. Cancelled drag or drop outside the grid: rebind from the unchanged order, no write.
+- [ ] **Step 3b:** The full-screen `Workspace` under the drawer is also a drop target and the default `DragScroller`. `DragController.findDropTarget` asks targets last-registered first (`DragController.java:583`), so the grid wins over its own rect, but a drop on the header gap or the page dots would reach `Workspace.onDrop` and add the app behind the open drawer. `Workspace.isDropEnabled()` returns false, and the workspace does not edge-scroll, while in `ALL_APPS` (`// LC:`).
+- [ ] **Step 4: On a device:** drop on the page dots and on the search bar gap (nothing added to home, app back in place), drag within a page, drag across pages by the edge, drop on a gap past the last app (goes to the end), cancel by dropping outside, kill the launcher and reopen (order kept), install a new app (last cell).
 - [ ] **Step 5: Commit** — `feat(drawer): rearrange apps by drag in the paged drawer`.
 
 ### Task 5: Add to Home
