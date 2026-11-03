@@ -125,12 +125,15 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
 
     private final ActivityContext mActivity;
 
-    // LC: dock spread edge to edge (config_dock_centered_columns), one cell per icon; a free cell
-    // opens while an app from elsewhere is dragged over it
+    // LC: dock spread edge to edge (config_dock_centered_columns), one cell per icon; a gap
+    // opens under an app dragged over it, where its x falls between the icons shown
+    private static final int DOCK_GAP_ANIM_MS = 150;
     private final boolean mDockCenteredEnabled;
     private boolean mDockDragging;
     private boolean mDragFromDock;
+    private int mDragHomeCell = -1;
     private boolean mDockOpenForDrop;
+    private int mDockGapCell = -1;
 
     PreferenceManager2 preferenceManager2;
     PreferenceManager preferenceManager;
@@ -393,7 +396,7 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
      * LC: whether the dock spreads its icons: the host asked for it, and the dock is one
      * horizontal row on one page with no bubble bar to make room for.
      */
-    private boolean isDockCentered() {
+    boolean isDockCentered() {
         DeviceProfile dp = mActivity.getDeviceProfile();
         return mDockCenteredEnabled && !mHasVerticalHotseat
                 && dp.numHotseatRows == 1 && dp.numHotseatPages == 1
@@ -415,10 +418,9 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
 
     /**
      * LC: gives the dock one cell per icon, packed from the first cell, and saves positions that
-     * moved; {@code withFreeCell} adds an empty cell at the end for an app being dragged in. Run
-     * once binding is done, after a drag, and after apps are removed.
+     * moved. Run once binding is done, after a drag, and after apps are removed.
      */
-    public void updateDockCells(boolean withFreeCell) {
+    public void updateDockCells() {
         if (!isDockCentered()) return;
         CellLayout page = getCurrentPageLayout();
         if (page == null) return;
@@ -430,19 +432,18 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
                 ((CellLayoutLayoutParams) b.getLayoutParams()).getCellX()));
         int maxCols = mActivity.getDeviceProfile().numShownHotseatIcons;
         int n = children.size();
-        if (!withFreeCell) {
-            for (int i = 0; i < n; i++) {
-                View child = children.get(i);
-                CellLayoutLayoutParams lp = (CellLayoutLayoutParams) child.getLayoutParams();
-                if (lp.getCellX() == i) continue;
-                lp.setCellX(i);
-                if (mActivity instanceof Launcher launcher && child.getTag() instanceof ItemInfo info) {
-                    launcher.getModelWriter().moveItemInDatabase(
-                            info, CONTAINER_HOTSEAT, page.getHotseatPageIndex(), i, 0);
-                }
+        for (int i = 0; i < n; i++) {
+            View child = children.get(i);
+            CellLayoutLayoutParams lp = (CellLayoutLayoutParams) child.getLayoutParams();
+            lp.setCellX(i);
+            // The saved cell, not the laid out one: a drag's gap moves icons in layout only.
+            if (mActivity instanceof Launcher launcher && child.getTag() instanceof ItemInfo info
+                    && info.cellX != i) {
+                launcher.getModelWriter().moveItemInDatabase(
+                        info, CONTAINER_HOTSEAT, page.getHotseatPageIndex(), i, 0);
             }
         }
-        page.setGridSize(Math.max(1, Math.min(maxCols, n + (withFreeCell ? 1 : 0))), 1);
+        page.setGridSize(Math.max(1, Math.min(maxCols, n)), 1);
         // setGridSize forgets the occupied cells, and the icons' container keeps the old cell
         // positions unless it is measured again.
         for (View child : children) page.markCellsAsOccupiedForView(child);
@@ -451,18 +452,125 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
     }
 
     /**
-     * LC: called as a drag moves between drop layouts. Entering the dock with an app from
-     * elsewhere opens a free cell for it; moving on to a home screen page gives it back.
+     * LC: called as a drag moves between drop layouts. Leaving the dock for a home screen page
+     * puts the dock back as it was before the drag: no gap, or the dragged icon's own cell.
      */
     public void onDockDropLayoutChanged(@Nullable CellLayout layout) {
-        // null comes before every drop (Workspace.onDragExit): keep the free cell for it; the
-        // drag end packs the dock again either way.
-        if (!isDockCentered() || mDragFromDock || layout == null) return;
+        // null comes before every drop (Workspace.onDragExit): keep the gap for it; the drag end
+        // packs the dock again either way.
+        if (!isDockCentered() || layout == null) return;
         boolean overDock = isHotseatPage(layout);
-        if (overDock != mDockOpenForDrop) {
-            mDockOpenForDrop = overDock;
-            updateDockCells(overDock);
+        if (overDock == mDockOpenForDrop) return;
+        mDockOpenForDrop = overDock;
+        if (!overDock) setDockGap(mDragFromDock ? mDragHomeCell : -1);
+    }
+
+    /**
+     * LC: the dock's answer to a drag over it at {@code x} (in the dock page): a gap opens at once
+     * where x falls between the icons shown, or at either end; over an icon, the gap stays where
+     * it is and that icon is the target, for a folder. {@code outCell} gets the cell the drop
+     * would land in. Returns the distance from x to the targeted icon's center, as the folder
+     * logic reads it ({@link Float#MAX_VALUE} for the gap), or NaN when the dock does not handle
+     * this drag (not spread, or full) and the workspace's own reorder applies. {@code relayout}
+     * false only reads the target, for the drop.
+     */
+    public float onDockDragOver(float x, int[] outCell, boolean relayout) {
+        CellLayout page = getCurrentPageLayout();
+        if (!isDockCentered() || page == null) return Float.NaN;
+        List<View> others = getDockIconsBesideDragged(page);
+        int maxCols = mActivity.getDeviceProfile().numShownHotseatIcons;
+        if (others.size() >= maxCols) return Float.NaN;
+
+        // The icons' centers as shown now, in the dock's content box.
+        ShortcutAndWidgetContainer icons = page.getShortcutsAndWidgets();
+        boolean rtl = icons.invertLayoutHorizontally();
+        int width = page.getWidth() - page.getPaddingLeft() - page.getPaddingRight();
+        int cols = others.size() + (mDockGapCell >= 0 ? 1 : 0);
+        float px = x - page.getPaddingLeft();
+        float core = mActivity.getDeviceProfile().iconSizePx / 2f;
+        int before = 0;
+        for (int j = 0; j < others.size(); j++) {
+            int cell = mDockGapCell >= 0 && j >= mDockGapCell ? j + 1 : j;
+            float center = DockCentering.INSTANCE.center(rtl ? cols - 1 - cell : cell,
+                    Math.max(1, cols), maxCols, width, page.mBorderSpace.x);
+            if (Math.abs(px - center) < core) {
+                outCell[0] = cell;
+                outCell[1] = 0;
+                return Math.abs(px - center);
+            }
+            if (rtl ? center > px : center < px) before++;
         }
+        if (relayout && before != mDockGapCell) setDockGap(before);
+        outCell[0] = mDockGapCell >= 0 ? mDockGapCell : before;
+        outCell[1] = 0;
+        return Float.MAX_VALUE;
+    }
+
+    /**
+     * LC: for a drop the dock handles: keeps {@code cell} when it is free, else (an icon there
+     * that took no folder) moves it to the gap. False when there is no free cell to land in.
+     */
+    public boolean getDockDropCell(int[] cell) {
+        CellLayout page = getCurrentPageLayout();
+        if (page == null) return false;
+        if (cell[0] >= 0 && page.isRegionVacant(cell[0], 0, 1, 1)) return true;
+        if (mDockGapCell < 0) return false;
+        cell[0] = mDockGapCell;
+        cell[1] = 0;
+        return true;
+    }
+
+    /** LC: the dock's icons in cell order, without the one being dragged out of it. */
+    private List<View> getDockIconsBesideDragged(CellLayout page) {
+        ShortcutAndWidgetContainer icons = page.getShortcutsAndWidgets();
+        List<View> others = new ArrayList<>();
+        for (int i = 0; i < icons.getChildCount(); i++) {
+            View child = icons.getChildAt(i);
+            if (!(mDragFromDock && child.getVisibility() != VISIBLE)) others.add(child);
+        }
+        others.sort((a, b) -> Integer.compare(
+                ((CellLayoutLayoutParams) a.getLayoutParams()).getCellX(),
+                ((CellLayoutLayoutParams) b.getLayoutParams()).getCellX()));
+        return others;
+    }
+
+    /**
+     * LC: lays the dock out with an empty cell at {@code gap} (-1 for none) for the dragged app,
+     * the icons sliding to their new places. Layout only: the drag end saves positions.
+     */
+    private void setDockGap(int gap) {
+        CellLayout page = getCurrentPageLayout();
+        if (page == null) return;
+        mDockGapCell = gap;
+        List<View> others = getDockIconsBesideDragged(page);
+        float[] oldX = new float[others.size()];
+        for (int j = 0; j < others.size(); j++) oldX[j] = others.get(j).getX();
+        int maxCols = mActivity.getDeviceProfile().numShownHotseatIcons;
+        page.setGridSize(Math.max(1, Math.min(maxCols, others.size() + (gap >= 0 ? 1 : 0))), 1);
+        for (int j = 0; j < others.size(); j++) {
+            View child = others.get(j);
+            ((CellLayoutLayoutParams) child.getLayoutParams())
+                    .setCellX(gap >= 0 && j >= gap ? j + 1 : j);
+            page.markCellsAsOccupiedForView(child);
+        }
+        // The dragged icon, hidden, keeps the gap's cell, so a cancelled drop shows it there.
+        ShortcutAndWidgetContainer icons = page.getShortcutsAndWidgets();
+        for (int i = 0; i < icons.getChildCount(); i++) {
+            View child = icons.getChildAt(i);
+            if (!others.contains(child) && gap >= 0) {
+                ((CellLayoutLayoutParams) child.getLayoutParams()).setCellX(gap);
+            }
+        }
+        icons.requestLayout();
+        OneShotPreDrawListener.add(icons, () -> {
+            for (int j = 0; j < others.size(); j++) {
+                if (!(others.get(j) instanceof Reorderable item)) continue;
+                MultiProperty slide = item.getTranslateDelegate()
+                        .getTranslationX(MultiTranslateDelegate.INDEX_REORDER_PREVIEW_OFFSET);
+                slide.setValue(slide.getValue() + oldX[j] - others.get(j).getX());
+                slide.animateToValue(0).setDuration(DOCK_GAP_ANIM_MS).start();
+            }
+        });
     }
 
     /** LC: an empty dock shows no background, except while something is dragged. */
@@ -481,6 +589,11 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
         mDockDragging = true;
         mDragFromDock = dragObject.dragInfo != null
                 && dragObject.dragInfo.container == CONTAINER_HOTSEAT;
+        mDragHomeCell = mDragFromDock ? dragObject.dragInfo.cellX : -1;
+        // A drag out of the dock starts with its gap where the icon was; one from elsewhere
+        // opens it once over the dock.
+        mDockOpenForDrop = mDragFromDock;
+        mDockGapCell = mDragHomeCell;
         updateDockBackground();
     }
 
@@ -489,9 +602,11 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
         mDockDragging = false;
         mDockOpenForDrop = false;
         mDragFromDock = false;
+        mDragHomeCell = -1;
+        mDockGapCell = -1;
         // After the drop has landed and laid out, so the dropped icon is counted in its cell.
         if (isDockCentered()) {
-            OneShotPreDrawListener.add(this, () -> updateDockCells(false));
+            OneShotPreDrawListener.add(this, () -> updateDockCells());
             requestLayout();
         }
         updateDockBackground();

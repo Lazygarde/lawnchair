@@ -49,4 +49,12 @@ class DockCenteringTest {
     // RTL mirrors lp.x, so the cell index comes from the position, not the cellX.
     @Test
     fun indexFromPosition() = assertEquals(offset(500, 2), DockCentering.offset(500, 500, 2, 5, 0), 0f)
+
+    @Test
+    fun center_edgesAndMiddle() {
+        assertEquals(100f, DockCentering.center(0, 3, 5, 1000, 0), 0.01f)
+        assertEquals(500f, DockCentering.center(1, 3, 5, 1000, 0), 0.01f)
+        assertEquals(900f, DockCentering.center(2, 3, 5, 1000, 0), 0.01f)
+        assertEquals(500f, DockCentering.center(0, 1, 5, 1000, 0), 0.01f)
+    }
 }

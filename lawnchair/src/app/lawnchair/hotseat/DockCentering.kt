@@ -16,9 +16,13 @@ object DockCentering {
         val stride = cellWidth + border
         val width = cols * cellWidth + (cols - 1) * border
         val index = if (stride > 0) Math.round(left.toFloat() / stride) else 0
+        return center(index, cols, maxCols, width, border) - (left + cellWidth / 2f)
+    }
+
+    /** Where the icon in visual slot [index] of [cols] shows its center, across [width]. */
+    fun center(index: Int, cols: Int, maxCols: Int, width: Int, border: Int): Float {
         // A full dock's cell: the spacing the icons keep at the edges.
         val slot = (width - (maxCols - 1) * border) / maxCols.toFloat()
-        val target = if (cols <= 1) width / 2f else slot / 2 + index * (width - slot) / (cols - 1)
-        return target - (left + cellWidth / 2f)
+        return if (cols <= 1) width / 2f else slot / 2 + index * (width - slot) / (cols - 1)
     }
 }

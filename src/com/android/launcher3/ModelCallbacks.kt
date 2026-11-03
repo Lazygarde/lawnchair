@@ -163,7 +163,7 @@ class ModelCallbacks(private var launcher: Launcher) : BgDataModel.Callbacks {
             deviceProfile.deviceProperties.isTwoPanels,
         )
         // LC: a spread dock packs its icons once they are all bound
-        launcher.hotseat?.updateDockCells(false)
+        launcher.hotseat?.updateDockCells()
         launcher.finishBindingItems(pagesBoundFirst)
     }
 
@@ -243,7 +243,7 @@ class ModelCallbacks(private var launcher: Launcher) : BgDataModel.Callbacks {
      */
     override fun bindWorkspaceComponentsRemoved(matcher: Predicate<ItemInfo?>) {
         launcher.workspace.removeItemsByMatcher(matcher, true)
-        launcher.hotseat?.updateDockCells(false) // LC: close the gap a removed dock app leaves
+        launcher.hotseat?.updateDockCells() // LC: close the gap a removed dock app leaves
         launcher.dragController.onAppsRemoved(matcher)
         PopupContainerWithArrow.dismissInvalidPopup(launcher)
     }
