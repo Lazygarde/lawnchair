@@ -455,12 +455,17 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
     @Override
     protected void onAttachedToWindow() {
         super.onAttachedToWindow();
-        if (mDockCenteredEnabled) mActivity.getDragController().addDragListener(this);
+        // The grid preview's context has no drag controller.
+        if (mDockCenteredEnabled && mActivity.getDragController() != null) {
+            mActivity.getDragController().addDragListener(this);
+        }
     }
 
     @Override
     protected void onDetachedFromWindow() {
-        if (mDockCenteredEnabled) mActivity.getDragController().removeDragListener(this);
+        if (mDockCenteredEnabled && mActivity.getDragController() != null) {
+            mActivity.getDragController().removeDragListener(this);
+        }
         super.onDetachedFromWindow();
     }
 
