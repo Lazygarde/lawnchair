@@ -247,6 +247,11 @@ public abstract class ButtonDropTarget extends TextView
 
     @Override
     public boolean isDropEnabled() {
+        // LC: the bar sits under an open drawer, invisible but still hit-tested; never take a drop there
+        if (mActivityContext instanceof Launcher launcher
+                && launcher.isInState(LauncherState.ALL_APPS)) {
+            return false;
+        }
         return mActive && (mAccessibleDrag ||
                 mActivityContext.getDragController().getDistanceDragged()
                         >= mDragDistanceThreshold);

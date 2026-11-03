@@ -1100,4 +1100,6 @@
     <string name="ai_cleaner_shortcut_display_desc">Adjust brightness, theme, and screen timeout</string>
     <string name="ai_cleaner_shortcut_device_info_title">Device Info</string>
     <string name="ai_cleaner_shortcut_device_info_desc">View system version and hardware details</string>
+    <!-- Paged app drawer: shown at the top while an app is dragged; holding it there goes to the home screen -->
+    <string name="paged_drawer_add_to_home">Add to Home screen</string>
 </resources>

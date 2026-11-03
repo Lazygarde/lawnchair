@@ -51,6 +51,9 @@ public class DragOptions {
 
     public boolean isFlingToDelete;
 
+    /** LC: the drag started in the paged app drawer, which stays open and rearranges. */
+    public boolean fromPagedDrawer = false;
+
     /**
      * Specifies a condition that must be met before DragListener#onDragStart() is called.
      * By default, there is no condition and onDragStart() is called immediately following

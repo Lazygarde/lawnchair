@@ -119,6 +119,7 @@ import static com.topjohnwu.superuser.internal.Utils.context;
 import app.lawnchair.drawerslots.DrawerSlotController;
 import app.lawnchair.drawerslots.HostSlotFooter;
 import app.lawnchair.allapps.LawnchairAlphabeticalAppsList;
+import app.lawnchair.allapps.paged.AddToHomeBar;
 import app.lawnchair.allapps.paged.AllAppsPagedGrid;
 import app.lawnchair.font.FontManager;
 import app.lawnchair.preferences.PreferenceManager;
@@ -187,6 +188,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
     // LC: paged drawer (config_drawer_paged); null unless the host turned it on
     @Nullable private View mPagedContainer;
     @Nullable private AllAppsPagedGrid mPagedGrid;
+    @Nullable private View mAddToHomeBar;
     protected FloatingHeaderView mHeader;
     protected final List<AllAppsRow> mAdditionalHeaderRows = new ArrayList<>();
     // LC: host drawer slots (header row is an AllAppsRow, footer is a fixed bottom slot)
@@ -679,6 +681,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
                     mAH.get(i).mRecyclerView.scrollToTop();
                 }
             }
+            if (mPagedGrid != null) mPagedGrid.setCurrentPage(0); // LC: paged drawer opens on page 1
         }
         if (mTouchHandler != null) {
             mTouchHandler.endFastScrolling();
@@ -910,8 +913,10 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         // LC: the paged grid sits beside the A-Z list and is rebuilt with it
         if (mPagedContainer != null) {
             removeView(mPagedContainer);
+            removeView(mAddToHomeBar);
             mPagedContainer = null;
             mPagedGrid = null;
+            mAddToHomeBar = null;
         }
         View oldView = getAppsRecyclerViewContainer();
         int index = indexOfChild(oldView);
@@ -965,6 +970,16 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             addView(mPagedContainer, indexOfChild(rvContainer) + 1);
             mPagedGrid = mPagedContainer.findViewById(R.id.all_apps_paged_grid);
             mPagedGrid.setPageIndicator(mPagedContainer.findViewById(R.id.all_apps_paged_indicator));
+            // Over the search bar, drawn last so it is on top; visible only during a paged drag.
+            mAddToHomeBar = new AddToHomeBar(getContext());
+            RelativeLayout.LayoutParams barLp = new RelativeLayout.LayoutParams(0, 0);
+            barLp.addRule(RelativeLayout.ALIGN_TOP, R.id.search_container_all_apps);
+            barLp.addRule(RelativeLayout.ALIGN_BOTTOM, R.id.search_container_all_apps);
+            barLp.addRule(RelativeLayout.ALIGN_LEFT, R.id.search_container_all_apps);
+            barLp.addRule(RelativeLayout.ALIGN_RIGHT, R.id.search_container_all_apps);
+            int barInset = (int) Utilities.dpToPx(16);
+            barLp.setMargins(barInset, barInset / 2, barInset, barInset / 2);
+            addView(mAddToHomeBar, barLp);
             if (mAH.get(AdapterHolder.MAIN).mAppsList instanceof LawnchairAlphabeticalAppsList<?> list) {
                 list.setOnPagedAppsChanged(apps -> {
                     mPagedGrid.bind(apps);

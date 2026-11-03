@@ -39,6 +39,7 @@ import com.android.launcher3.DragSource;
 import com.android.launcher3.DropTarget;
 import com.android.launcher3.DropTarget.DragObject;
 import com.android.launcher3.Launcher;
+import com.android.launcher3.LauncherState;
 import com.android.launcher3.R;
 import com.android.launcher3.accessibility.DragViewStateAnnouncer;
 import com.android.launcher3.dragndrop.DragOptions.PreDragCondition;
@@ -244,7 +245,10 @@ public class LauncherDragController extends DragController<Launcher> {
 
     @Override
     protected void exitDrag() {
-        if (!mIsInPreDrag && !mActivity.isInState(EDIT_MODE)) {
+        // LC: a paged drawer drop that nothing took (top bar, page dots) leaves the drawer open
+        boolean pagedDrawerStays = mOptions != null && mOptions.fromPagedDrawer
+                && mActivity.isInState(LauncherState.ALL_APPS);
+        if (!mIsInPreDrag && !mActivity.isInState(EDIT_MODE) && !pagedDrawerStays) {
             mActivity.getStateManager().goToState(NORMAL, SPRING_LOADED_EXIT_DELAY);
         }
     }
