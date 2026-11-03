@@ -92,6 +92,13 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         }
     }
 
+    // The dots follow the scroll, as in FolderPagedView: given only the settled page, a jump of
+    // more than one page (back to the first as the drawer closes) left them on the old page.
+    override fun onScrollChanged(l: Int, t: Int, oldl: Int, oldt: Int) {
+        super.onScrollChanged(l, t, oldl, oldt)
+        if (mMaxScroll > 0) mPageIndicator?.setScroll(l, mMaxScroll)
+    }
+
     // ponytail: rebuilds every icon on each bind; reuse views if a large drawer shows jank.
     private fun rebuild() {
         val keepPage = nextPage
