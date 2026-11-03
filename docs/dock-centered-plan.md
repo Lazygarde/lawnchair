@@ -9,7 +9,7 @@ Decisions taken with the host on 2026-11-03:
 | Question | Decision |
 |---|---|
 | Layout of 1–4 apps | Spread edge to edge, evenly (changed from "centered as a group" after the first device test) |
-| While dragging into the dock | One UI style: icons stay put; an app dragged in from elsewhere opens a free cell, and the icons make way under the finger. (The first version slid icons to the N real slots at drag start; on a phone whose dock had gaps that jumped them aside and made dropping hard.) |
+| While dragging into the dock | One UI style: icons stay put; an app dragged over the dock opens a gap at once where its x falls between the icons, or at either end, and the icons make way. (The first version slid icons to the N real slots at drag start; on a phone whose dock had gaps that jumped them aside and made dropping hard.) |
 | Dock with 0 apps | Its background is hidden; it shows again while dragging so the dock can be dropped on |
 | Existing installs with a 4-slot dock | Switched to N slots for everyone: Launcher3's own grid migration (`launcher_6_4_4.db` → `launcher_6_4_5.db`) keeps every app |
 
@@ -23,10 +23,16 @@ Decisions taken with the host on 2026-11-03:
   (saving any position that moved through `ModelWriter.moveItemInDatabase`) and sets the page's
   grid to `n` columns, re-marking the occupied cells `setGridSize` forgets and re-measuring the
   icons' container. It runs when binding finishes, after apps are removed, and after every drag.
-- **Free cell for a drop:** `Workspace.setCurrentDropLayout` tells the hotseat when a drag moves
-  over or off it. Over it, with an app from elsewhere, the grid gets `n + 1` columns, so
-  Launcher3's own reorder opens the gap under the finger; moving on to a home page gives the
-  cell back. The `null` layout that comes before every drop is ignored.
+- **Gap for a drop:** while a drag is over the dock, `Workspace.onDragOver` asks
+  `Hotseat.onDockDragOver` instead of running Launcher3's timed reorder. The dragged app's x is
+  compared with the centers the icons show (`DockCentering.center`): between two icons, or past
+  either end, the gap opens there at once (layout only, the icons slide); over an icon's middle the
+  gap stays and that icon is the target, so hovering still makes a folder. The drop
+  (`Workspace.onDrop` / `onDropExternal`) lands in the gap through `Hotseat.getDockDropCell`.
+  A spread dock takes the drag across the whole width, so both screen edges reach it. Leaving the
+  dock for a home page takes the gap back (or puts it at the dragged icon's own cell), and the
+  `null` layout that comes before every drop is ignored. A full dock falls back to Launcher3's
+  reorder. The pack after the drag compares against the saved cell, not the laid out one.
 - **Edge to edge:** the hotseat page's translation provider (the hook the bubble bar uses; the
   published `withoutQuickstep` variant has no bubble bar) shifts each icon inside its own cell
   (`DockCentering.offset`) so the first sits at the left edge, the last at the right edge, at the
