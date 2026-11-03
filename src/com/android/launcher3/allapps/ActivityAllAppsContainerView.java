@@ -186,7 +186,9 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
     private final RectF mTmpRectF = new RectF();
     protected AllAppsPagedView mViewPager;
     // LC: paged drawer (config_drawer_paged); null unless the host turned it on
-    @Nullable private View mPagedContainer;
+    @Nullable private ViewGroup mPagedContainer;
+    // LC: whether the grid stands in for the A-Z list (it may be hidden by a search meanwhile)
+    private boolean mPagedActive;
     @Nullable private AllAppsPagedGrid mPagedGrid;
     @Nullable private View mAddToHomeBar;
     protected FloatingHeaderView mHeader;
@@ -917,6 +919,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             mPagedContainer = null;
             mPagedGrid = null;
             mAddToHomeBar = null;
+            mPagedActive = false;
         }
         View oldView = getAppsRecyclerViewContainer();
         int index = indexOfChild(oldView);
@@ -964,7 +967,8 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
 
         // LC: paged drawer, in the same place as the list, which it hides while it is used
         if (!showTabs && getResources().getBoolean(R.bool.config_drawer_paged)) {
-            mPagedContainer = getLayoutInflater().inflate(R.layout.all_apps_paged_grid, this, false);
+            mPagedContainer = (ViewGroup) getLayoutInflater().inflate(
+                    R.layout.all_apps_paged_grid, this, false);
             mPagedContainer.setLayoutParams(new RelativeLayout.LayoutParams(
                     (RelativeLayout.LayoutParams) rvContainer.getLayoutParams()));
             addView(mPagedContainer, indexOfChild(rvContainer) + 1);
@@ -1001,20 +1005,25 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
     // LC: show the paged grid instead of the A-Z list when the list is in paged mode and no search
     private void updatePagedVisibility() {
         if (mPagedContainer == null) return;
-        boolean paged = !mUsingTabs && !isSearching()
+        mPagedActive = !mUsingTabs
                 && mAH.get(AdapterHolder.MAIN).mAppsList instanceof LawnchairAlphabeticalAppsList<?> list
                 && list.isPagedMode();
         View rv = findViewById(R.id.apps_list_view);
-        mPagedContainer.setVisibility(paged ? VISIBLE : GONE);
-        if (paged) {
+        if (mPagedActive) {
+            // The grid is the A-Z container now (getAppsRecyclerViewContainer), so the search
+            // transition fades it; the list stays hidden throughout.
             if (rv != null) {
                 mPagedContainer.setPadding(0, rv.getPaddingTop(), 0, rv.getPaddingBottom());
                 rv.setVisibility(GONE);
             }
+            mPagedContainer.setVisibility(isSearching() ? GONE : VISIBLE);
             mFastScroller.setVisibility(GONE);
-        } else if (rv != null && !isSearching()) {
-            rv.setVisibility(VISIBLE);
-            mFastScroller.setVisibility(VISIBLE);
+        } else {
+            mPagedContainer.setVisibility(GONE);
+            if (rv != null && !isSearching()) {
+                rv.setVisibility(VISIBLE);
+                mFastScroller.setVisibility(VISIBLE);
+            }
         }
     }
 
@@ -1538,6 +1547,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
      * hidden while searching.
      */
     public ViewGroup getAppsRecyclerViewContainer() {
+        if (mPagedContainer != null && mPagedActive) return mPagedContainer; // LC: paged drawer
         return mViewPager != null ? mViewPager : findViewById(R.id.apps_list_view);
     }
 
