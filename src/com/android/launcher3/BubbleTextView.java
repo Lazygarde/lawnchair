@@ -38,6 +38,7 @@ import static com.android.launcher3.icons.cache.CacheLookupFlag.DEFAULT_LOOKUP_F
 import static com.android.launcher3.model.data.ItemInfoWithIcon.FLAG_INCREMENTAL_DOWNLOAD_ACTIVE;
 import static com.android.launcher3.model.data.ItemInfoWithIcon.FLAG_INSTALL_SESSION_ACTIVE;
 import static com.android.launcher3.model.data.ItemInfoWithIcon.FLAG_SHOW_DOWNLOAD_PROGRESS_MASK;
+import static com.android.launcher3.util.MultiTranslateDelegate.INDEX_BUBBLE_ADJUSTMENT_ANIM;
 import static com.android.launcher3.util.MultiTranslateDelegate.INDEX_TASKBAR_APP_RUNNING_STATE_ANIM;
 
 import android.animation.Animator;
@@ -98,6 +99,7 @@ import com.android.launcher3.popup.PopupContainerWithArrow;
 import com.android.launcher3.search.StringMatcherUtility;
 import com.android.launcher3.util.CancellableTask;
 import com.android.launcher3.util.IntArray;
+import com.android.launcher3.util.MultiPropertyFactory.MultiProperty;
 import com.android.launcher3.util.MultiTranslateDelegate;
 import com.android.launcher3.util.SafeCloseable;
 import com.android.launcher3.util.ShortcutUtil;
@@ -1586,8 +1588,12 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
         }
         // LC-Note: Cancel physics animator for icon swipe gesture
         PhysicsAnimator.getInstance(this).cancel();
-        setTranslationX(0);
-        setTranslationY(0);
+        // LC: back to what the translate delegate holds (bubble bar, centered dock, reorder
+        // preview), not 0: setting the view directly dropped those offsets on every focus change
+        MultiProperty tx = mTranslateDelegate.getTranslationX(INDEX_BUBBLE_ADJUSTMENT_ANIM);
+        tx.setValue(tx.getValue());
+        MultiProperty ty = mTranslateDelegate.getTranslationY(INDEX_BUBBLE_ADJUSTMENT_ANIM);
+        ty.setValue(ty.getValue());
     }
 
     private void updateIcon(Drawable newIcon) {
