@@ -773,7 +773,12 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             // Will be called at the end of the animation.
             return;
         }
-        if (currentActivePage != SEARCH) {
+        // LC: a query deleted down to nothing ends the search, but the field is still being typed
+        // in; keep its focus and the keyboard instead of resetting it
+        View searchField = mSearchUiManager.getEditText();
+        boolean keepSearchField = currentActivePage != SEARCH
+                && searchField != null && searchField.hasFocus();
+        if (currentActivePage != SEARCH && !keepSearchField) {
             mActivityContext.hideKeyboard();
         }
         if (mAH.get(currentActivePage).mRecyclerView != null) {
@@ -787,7 +792,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             setupHeader();
         }
         mHeader.setActiveRV(currentActivePage);
-        reset(true /* animate */, !isSearching() /* exitSearch */);
+        reset(true /* animate */, !isSearching() && !keepSearchField /* exitSearch */);
         updateHostSlotFooter(); // LC
 
         mWorkManager.onActivePageChanged(currentActivePage);
