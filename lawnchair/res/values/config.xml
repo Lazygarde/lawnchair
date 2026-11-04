@@ -115,6 +115,8 @@
     <string name="config_default_live_information_endpoint" translatable="false">https://lawnchair.app/live-information.json</string>
 
     <bool name="config_default_show_hotseat">true</bool>
+    <!-- Whether the dock draws its background (pref_hotseatBG) until the user sets it. -->
+    <bool name="config_default_hotseat_bg">true</bool>
     <bool name="config_default_always_reload_icons">true</bool>
     <bool name="config_default_dark_status_bar">false</bool>
     <bool name="config_default_show_notification_count">false</bool>

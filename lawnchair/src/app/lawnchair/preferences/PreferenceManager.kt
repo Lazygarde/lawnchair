@@ -170,7 +170,8 @@ class PreferenceManager @Inject constructor(
     val hotseatQsbCornerRadius = FloatPref("pref_hotseatQsbCornerRadius", 1F, recreate)
     val hotseatQsbAlpha = IntPref("pref_searchHotseatTranparency", 100, recreate)
     val hotseatQsbStrokeWidth = FloatPref("pref_searchStrokeWidth", 0F, recreate)
-    val hotseatBG = BoolPref("pref_hotseatBG", true, recreate)
+    // The host turns the dock's background off by default with config_default_hotseat_bg.
+    val hotseatBG = BoolPref("pref_hotseatBG", context.resources.getBoolean(R.bool.config_default_hotseat_bg), recreate)
     val hotseatBGHorizontalInsetLeft = IntPref("pref_hotseatBGHRinsetLeft", defaultHotseatHorizontalInsetPx, recreate)
     val hotseatBGVerticalInsetTop = IntPref("pref_hotseatBGVRinsetTop", 0, recreate)
     val hotseatBGHorizontalInsetRight = IntPref("pref_hotseatBGHRinsetRight", defaultHotseatHorizontalInsetPx, recreate)
