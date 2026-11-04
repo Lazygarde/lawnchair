@@ -60,6 +60,7 @@ sealed class LawnchairSearchAlgorithm(
         roundBottom = false,
         roundTop = false,
     )
+    private val pagedDrawer = context.resources.getBoolean(R.bool.config_drawer_paged)
     private val iconBackground = SearchItemBackground(
         context,
         showBackground = false,
@@ -120,7 +121,8 @@ sealed class LawnchairSearchAlgorithm(
             ) {
                 SearchAdapterItem.createAdapterItem(target, getGroupedBackground(index, appAndShortcutIndices))
             } else if (target.layoutType == ICON_SINGLE_VERTICAL_TEXT && target.extras.getBoolean(EXTRA_QUICK_LAUNCH, false)) {
-                SearchAdapterItem.createAdapterItem(target, normalBackground)
+                // Over the paged drawer's blur the first app gets no box (One UI); Enter still opens it.
+                SearchAdapterItem.createAdapterItem(target, if (pagedDrawer) iconBackground else normalBackground)
             } else {
                 val background = getBackground(
                     target.layoutType,
