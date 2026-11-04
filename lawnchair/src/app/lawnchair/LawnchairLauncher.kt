@@ -21,7 +21,6 @@ import android.app.ActivityOptions
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
-import android.graphics.Color
 import android.graphics.RectF
 import android.graphics.RenderEffect
 import android.graphics.Shader
@@ -648,7 +647,8 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
         // through its own API. The blur paints over whatever the view covers in this window, so it
         // goes on the drawer, which fades in with the swipe, and the home screen shows through it.
         if (SamsungBlur.isUsed(this)) {
-            appsView?.let { SamsungBlur.apply(it, targetBlur, Color.TRANSPARENT) }
+            // Darkened a little, as One UI's drawer is, so labels read over a light wallpaper.
+            appsView?.let { SamsungBlur.apply(it, targetBlur, SAMSUNG_BLUR_TINT) }
         }
 
         // 2. SurfaceControl background blur fallback (wallpaper layer blur in SurfaceFlinger)
@@ -789,6 +789,9 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
     companion object {
         private const val FLAG_RECREATE = 1 shl 0
         private const val FLAG_RESTART = 1 shl 1
+
+        // Black at 30%: One UI's drawer is this much darker than the blurred wallpaper.
+        private const val SAMSUNG_BLUR_TINT = 0x4D000000
 
         var sRestartFlags = 0
 

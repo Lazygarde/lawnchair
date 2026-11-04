@@ -3,9 +3,12 @@ package app.lawnchair.allapps.paged
 /** Pagination of the paged drawer: row-major cells, `cols × rows` apps per page. */
 object PagedGridMath {
 
-    /** Full rows that fit; never a half row, never fewer than one. */
+    /** At most this many rows, as One UI: a taller screen spaces them out instead. */
+    const val MAX_ROWS = 6
+
+    /** Full rows that fit; never a half row, never fewer than one, never more than [MAX_ROWS]. */
     fun rows(availableHeightPx: Int, cellHeightPx: Int): Int =
-        if (cellHeightPx <= 0) 1 else maxOf(1, availableHeightPx / cellHeightPx)
+        if (cellHeightPx <= 0) 1 else (availableHeightPx / cellHeightPx).coerceIn(1, MAX_ROWS)
 
     /** At least one page, so an empty drawer still has somewhere to drop. */
     fun pageCount(items: Int, perPage: Int): Int = maxOf(1, (items + perPage - 1) / perPage)
