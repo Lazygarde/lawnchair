@@ -683,7 +683,6 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
                     mAH.get(i).mRecyclerView.scrollToTop();
                 }
             }
-            if (mPagedGrid != null) mPagedGrid.setCurrentPage(0); // LC: paged drawer opens on page 1
         }
         if (mTouchHandler != null) {
             mTouchHandler.endFastScrolling();
