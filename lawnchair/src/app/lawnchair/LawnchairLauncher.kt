@@ -21,6 +21,7 @@ import android.app.ActivityOptions
 import android.app.WallpaperManager
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.graphics.RectF
 import android.graphics.RenderEffect
 import android.graphics.Shader
@@ -57,6 +58,7 @@ import app.lawnchair.root.RootNotAvailableException
 import app.lawnchair.theme.ThemeProvider
 import app.lawnchair.ui.popup.LauncherOptionsPopup
 import app.lawnchair.ui.popup.LawnchairShortcut
+import app.lawnchair.util.SamsungBlur
 import app.lawnchair.util.getThemedIconPacksInstalled
 import app.lawnchair.util.unsafeLazy
 import com.android.launcher3.BaseActivity
@@ -640,6 +642,13 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
         try {
             window?.setBackgroundBlurRadius(targetBlur)
         } catch (_: Throwable) {
+        }
+
+        // 1b. One UI turns the cross-window blur off (Galaxy S24: mBlurEnabled=false) and blurs
+        // through its own API. The blur paints over whatever the view covers in this window, so it
+        // goes on the drawer, which fades in with the swipe, and the home screen shows through it.
+        if (!windowManager.isCrossWindowBlurEnabled && SamsungBlur.isAvailable) {
+            appsView?.let { SamsungBlur.apply(it, targetBlur, Color.TRANSPARENT) }
         }
 
         // 2. SurfaceControl background blur fallback (wallpaper layer blur in SurfaceFlinger)
