@@ -1,6 +1,7 @@
 package app.lawnchair.allapps.paged
 
 import android.content.Context
+import android.graphics.Color
 import android.graphics.Rect
 import android.os.Looper
 import android.util.AttributeSet
@@ -24,6 +25,7 @@ import com.android.launcher3.dragndrop.DragOptions
 import com.android.launcher3.model.data.AppInfo
 import com.android.launcher3.model.data.ItemInfo
 import com.android.launcher3.util.ComponentKey
+import com.android.launcher3.util.Themes
 import com.android.launcher3.views.ActivityContext
 import kotlinx.coroutines.launch
 
@@ -146,6 +148,10 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         val layout = if (activityContext.deviceProfile.inv.enableTwoLinesInAllApps) R.layout.all_apps_icon_twoline else R.layout.all_apps_icon
         val icon = LayoutInflater.from(context).inflate(layout, parent, false) as BubbleTextView
         icon.applyFromApplicationInfo(app)
+        // Over the blurred wallpaper, white labels with the home screen's shadow (One UI); the
+        // drawer's own font and size stay.
+        icon.setTextColor(Color.WHITE)
+        icon.setShadowLayer(LABEL_SHADOW_RADIUS, 0f, 0f, Themes.getAttrColor(context, R.attr.workspaceShadowColor))
         icon.setLongPressTimeoutFactor(1f)
         icon.setOnClickListener(activityContext.itemOnClickListener)
         icon.setOnLongClickListener(activityContext.allAppsItemLongClickListener)
@@ -287,5 +293,6 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         private const val PAGE_FLIP_DELAY_MS = 500L
         private const val REORDER_ANIMATION_MS = 230
         private const val EDGE_FACTOR = 0.45f
+        private const val LABEL_SHADOW_RADIUS = 2f
     }
 }
