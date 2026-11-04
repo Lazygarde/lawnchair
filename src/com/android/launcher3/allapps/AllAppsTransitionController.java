@@ -239,7 +239,9 @@ public class AllAppsTransitionController
                 mLauncher.getStateManager().getCurrentStableState() == BACKGROUND_APP;
         // Allow apps panel to shift the full screen if coming from another app.
         float shiftRange = fromBackground ? mLauncher.getDeviceProfile().getDeviceProperties().getHeightPx() : mShiftRange;
-        getAppsViewProgressTranslationY().setValue(mProgress * shiftRange);
+        // LC: the paged drawer fades in where it is, full screen, instead of sliding up
+        getAppsViewProgressTranslationY().setValue(
+                mAppsView.isPagedDrawer() ? 0 : mProgress * shiftRange);
         mLauncher.onAllAppsTransition(1 - progress);
 
         boolean hasScrim = progress < NAV_BAR_COLOR_FORCE_UPDATE_THRESHOLD

@@ -36,6 +36,8 @@ import com.android.launcher3.celllayout.CellInfo;
 import com.android.launcher3.config.FeatureFlags;
 import com.android.launcher3.dragndrop.DragController;
 import com.android.launcher3.dragndrop.DragOptions;
+
+import app.lawnchair.allapps.paged.AllAppsPagedGrid;
 import com.android.launcher3.folder.Folder;
 import com.android.launcher3.logging.StatsLogManager.StatsLogger;
 import com.android.launcher3.model.data.ItemInfo;
@@ -174,6 +176,14 @@ public class ItemLongClickListener {
             }
         });
 
+        // LC: an icon of the paged drawer drags within the drawer, which is then the source
+        if (v.getParent() != null && v.getParent().getParent() != null
+                && v.getParent().getParent().getParent() instanceof AllAppsPagedGrid grid) {
+            DragOptions options = new DragOptions();
+            options.fromPagedDrawer = true;
+            launcher.getWorkspace().beginDragShared(v, grid, options);
+            return false;
+        }
         launcher.getWorkspace().beginDragShared(v, launcher.getAppsView(), new DragOptions());
         return false;
     }

@@ -245,6 +245,7 @@ public class AllAppsSwipeController extends AbstractStateChangeTouchController {
                 config.setInterpolator(ANIM_VERTICAL_PROGRESS, EMPHASIZED_ACCELERATE);
             }
         }
+        applyPagedDrawerFade(launcher, config);
     }
 
     /**
@@ -291,6 +292,19 @@ public class AllAppsSwipeController extends AbstractStateChangeTouchController {
                             ? ALL_APPS_VERTICAL_PROGRESS_MANUAL
                             : ALL_APPS_VERTICAL_PROGRESS_ATOMIC);
         }
+        applyPagedDrawerFade(launcher, config);
+    }
+
+    /**
+     * LC: the paged drawer is full screen and crossfades with the home screen (One UI): the home
+     * fades out as the drawer fades in, both with the swipe, and back.
+     */
+    private static void applyPagedDrawerFade(Launcher launcher, StateAnimationConfig config) {
+        if (!launcher.getAppsView().isPagedDrawer()) return;
+        config.setInterpolator(ANIM_ALL_APPS_FADE, LINEAR);
+        config.setInterpolator(ANIM_WORKSPACE_FADE, LINEAR);
+        config.setInterpolator(ANIM_HOTSEAT_FADE, LINEAR);
+        config.setInterpolator(ANIM_SCRIM_FADE, LINEAR);
     }
 
     /** Creates an interpolator that is 0 until the threshold, then follows given interpolator. */

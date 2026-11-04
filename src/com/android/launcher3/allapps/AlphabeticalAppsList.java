@@ -49,6 +49,7 @@ import com.android.launcher3.views.ActivityContext;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -257,8 +258,10 @@ public class AlphabeticalAppsList<T extends Context & ActivityContext> implement
                         .filter(mPrivateProviderManager.getItemInfoMatcher());
             }
         }
-        appSteam = appSteam.sorted(mAppNameComparator);
-        privateAppStream = privateAppStream.sorted(mAppNameComparator);
+        // LC: overridable order (the paged drawer sorts by install / user order)
+        Comparator<AppInfo> comparator = getAppComparator();
+        appSteam = appSteam.sorted(comparator);
+        privateAppStream = privateAppStream.sorted(comparator);
 
         // As a special case for some languages (currently only Simplified Chinese), we may need to
         // coalesce sections
@@ -494,6 +497,11 @@ public class AlphabeticalAppsList<T extends Context & ActivityContext> implement
             }
         }
         return position;
+    }
+
+    // LC: the order apps are listed in; alphabetical unless a subclass says otherwise
+    protected Comparator<AppInfo> getAppComparator() {
+        return mAppNameComparator;
     }
 
     protected int addAppsWithSections(List<AppInfo> appList, int startPosition) {

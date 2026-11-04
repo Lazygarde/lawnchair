@@ -558,7 +558,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         if (mAccessibilityDragListener != null) {
             mAccessibilityDragListener.onDragStart(dragObject, options);
         }
-        if (!mLauncher.isInState(EDIT_MODE)) {
+        // LC: a drag in the paged drawer keeps the drawer open; Add to Home leaves it later
+        if (!mLauncher.isInState(EDIT_MODE) && !options.fromPagedDrawer) {
             mLauncher.getStateManager().goToState(SPRING_LOADED);
         }
         mStatsLogManager.logger().withItemInfo(dragObject.dragInfo)
@@ -2280,10 +2281,16 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 // First we find the cell nearest to point at which the item is
                 // dropped, without any consideration to whether there is an item there.
 
-                mTargetCell = findNearestArea((int) mDragViewVisualCenter[0], (int)
-                        mDragViewVisualCenter[1], spanX, spanY, dropTargetLayout, mTargetCell);
-                float distance = dropTargetLayout.getDistanceFromWorkspaceCellVisualCenter(
-                        mDragViewVisualCenter[0], mDragViewVisualCenter[1], mTargetCell);
+                // LC: the spread dock says where the drop lands (see Hotseat.onDockDragOver)
+                float distance = hasMovedIntoHotseat ? mLauncher.getHotseat().onDockDragOver(
+                        mDragViewVisualCenter[0], mTargetCell, false) : Float.NaN;
+                boolean dockTarget = !Float.isNaN(distance);
+                if (!dockTarget) {
+                    mTargetCell = findNearestArea((int) mDragViewVisualCenter[0], (int)
+                            mDragViewVisualCenter[1], spanX, spanY, dropTargetLayout, mTargetCell);
+                    distance = dropTargetLayout.getDistanceFromWorkspaceCellVisualCenter(
+                            mDragViewVisualCenter[0], mDragViewVisualCenter[1], mTargetCell);
+                }
 
                 // If the item being dropped is a shortcut and the nearest drop
                 // cell also contains a shortcut, then create a folder with the two shortcuts.
@@ -2322,6 +2329,8 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 int[] resultSpan = new int[2];
                 if (returnToOriginalCellToPreventShuffling) {
                     mTargetCell[0] = mTargetCell[1] = -1;
+                } else if (dockTarget && mLauncher.getHotseat().getDockDropCell(mTargetCell)) {
+                    // LC: lands in the dock's gap as shown
                 } else {
                     mTargetCell = dropTargetLayout.performReorder((int) mDragViewVisualCenter[0],
                             (int) mDragViewVisualCenter[1], minSpanX, minSpanY, spanX, spanY,
@@ -2593,6 +2602,10 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
             mDragTargetLayout.onDragExit();
         }
         mDragTargetLayout = layout;
+        // LC: a spread dock opens a free cell while an app is dragged over it
+        if (mLauncher.getHotseat() != null) {
+            mLauncher.getHotseat().onDockDropLayoutChanged(layout);
+        }
         if (mDragTargetLayout != null) {
             mDragTargetLayout.onDragEnter();
         }
@@ -2727,6 +2740,18 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         if (mDragTargetLayout != null) {
             // We want the point to be mapped to the dragTarget.
             mapPointFromDropLayout(mDragTargetLayout, mDragViewVisualCenter);
+
+            // LC: the spread dock opens its gap at once, by x against the icons shown, instead
+            // of the grid's timed reorder (see Hotseat.onDockDragOver)
+            if (mLauncher.isHotseatLayout(mDragTargetLayout)) {
+                float dockDistance = mLauncher.getHotseat().onDockDragOver(
+                        mDragViewVisualCenter[0], mTargetCell, true);
+                if (!Float.isNaN(dockDistance)) {
+                    setCurrentDropOverCell(mTargetCell[0], mTargetCell[1]);
+                    manageFolderFeedback(dockDistance, d);
+                    return;
+                }
+            }
 
             int minSpanX = item.spanX;
             int minSpanY = item.spanY;
@@ -2867,6 +2892,10 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
         }
         View hotseatIcons = mLauncher.getHotseat().getPagedView();
         getViewBoundsRelativeToWorkspace(hotseatIcons, mTempRect);
+        // LC: a spread dock takes a drag anywhere across the width, so both ends are in reach
+        if (mLauncher.getHotseat().isDockCentered()) {
+            return dragObject.y >= mTempRect.top && dragObject.y < mTempRect.bottom;
+        }
         return mTempRect.contains(dragObject.x, dragObject.y);
     }
 
@@ -3161,11 +3190,19 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
 
             // First we find the cell nearest to point at which the item is
             // dropped, without any consideration to whether there is an item there.
+            // LC: the spread dock says where the drop lands (see Hotseat.onDockDragOver)
+            boolean dockTarget = false;
             if (touchXY != null) {
-                mTargetCell = findNearestArea(touchXY[0], touchXY[1], spanX, spanY,
-                        cellLayout, mTargetCell);
-                float distance = cellLayout.getDistanceFromWorkspaceCellVisualCenter(
-                        mDragViewVisualCenter[0], mDragViewVisualCenter[1], mTargetCell);
+                float distance = container == CONTAINER_HOTSEAT
+                        ? mLauncher.getHotseat().onDockDragOver(touchXY[0], mTargetCell, false)
+                        : Float.NaN;
+                dockTarget = !Float.isNaN(distance);
+                if (!dockTarget) {
+                    mTargetCell = findNearestArea(touchXY[0], touchXY[1], spanX, spanY,
+                            cellLayout, mTargetCell);
+                    distance = cellLayout.getDistanceFromWorkspaceCellVisualCenter(
+                            mDragViewVisualCenter[0], mDragViewVisualCenter[1], mTargetCell);
+                }
                 if (createUserFolderIfNecessary(view, container, cellLayout, mTargetCell, distance,
                         true, d)) {
                     return;
@@ -3176,7 +3213,9 @@ public class Workspace<T extends View & PageIndicator> extends PagedView<T>
                 }
             }
 
-            if (touchXY != null) {
+            if (dockTarget && mLauncher.getHotseat().getDockDropCell(mTargetCell)) {
+                // LC: lands in the dock's gap as shown
+            } else if (touchXY != null) {
                 // when dragging and dropping, just find the closest free spot
                 mTargetCell = cellLayout.performReorder((int) mDragViewVisualCenter[0],
                         (int) mDragViewVisualCenter[1], 1, 1, 1, 1,

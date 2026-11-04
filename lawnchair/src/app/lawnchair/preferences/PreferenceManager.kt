@@ -26,6 +26,7 @@ import app.lawnchair.util.getApkVersionComparison
 import app.lawnchair.util.isGestureNavContractCompatible
 import app.lawnchair.util.isOnePlusStock
 import com.android.launcher3.InvariantDeviceProfile
+import com.android.launcher3.R
 import com.android.launcher3.InvariantDeviceProfile.INDEX_DEFAULT
 import com.android.launcher3.LauncherAppState
 import com.android.launcher3.dagger.ApplicationContext
@@ -169,7 +170,8 @@ class PreferenceManager @Inject constructor(
     val hotseatQsbCornerRadius = FloatPref("pref_hotseatQsbCornerRadius", 1F, recreate)
     val hotseatQsbAlpha = IntPref("pref_searchHotseatTranparency", 100, recreate)
     val hotseatQsbStrokeWidth = FloatPref("pref_searchStrokeWidth", 0F, recreate)
-    val hotseatBG = BoolPref("pref_hotseatBG", true, recreate)
+    // The host turns the dock's background off by default with config_default_hotseat_bg.
+    val hotseatBG = BoolPref("pref_hotseatBG", context.resources.getBoolean(R.bool.config_default_hotseat_bg), recreate)
     val hotseatBGHorizontalInsetLeft = IntPref("pref_hotseatBGHRinsetLeft", defaultHotseatHorizontalInsetPx, recreate)
     val hotseatBGVerticalInsetTop = IntPref("pref_hotseatBGVRinsetTop", 0, recreate)
     val hotseatBGHorizontalInsetRight = IntPref("pref_hotseatBGHRinsetRight", defaultHotseatHorizontalInsetPx, recreate)
@@ -218,6 +220,14 @@ class PreferenceManager @Inject constructor(
     }
 
     init {
+        // LC: a host-fixed centered dock (config_dock_centered_columns) sets the dock size; a
+        // change runs Launcher3's grid migration on the next grid load, keeping every app. Set
+        // before the listener: a reloadGrid from inside this constructor would build a second
+        // PreferenceManager (the grid is not loaded yet, so nothing needs reloading).
+        val dockColumns = context.resources.getInteger(R.integer.config_dock_centered_columns)
+        if (dockColumns > 0 && hotseatColumns.get() != dockColumns) {
+            hotseatColumns.set(dockColumns)
+        }
         sp.registerOnSharedPreferenceChangeListener(this)
         migratePrefs(CURRENT_VERSION) { oldVersion ->
             if (oldVersion < 2) {

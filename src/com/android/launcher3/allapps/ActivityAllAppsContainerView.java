@@ -114,11 +114,14 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import app.lawnchair.allapps.SearchBarBlurOverlay;
+import app.lawnchair.util.SamsungBlur;
 import app.lawnchair.preferences2.PreferenceCacheExtensionsKt;
 import static com.topjohnwu.superuser.internal.Utils.context;
 import app.lawnchair.drawerslots.DrawerSlotController;
 import app.lawnchair.drawerslots.HostSlotFooter;
 import app.lawnchair.allapps.LawnchairAlphabeticalAppsList;
+import app.lawnchair.allapps.paged.AddToHomeBar;
+import app.lawnchair.allapps.paged.AllAppsPagedGrid;
 import app.lawnchair.font.FontManager;
 import app.lawnchair.preferences.PreferenceManager;
 import app.lawnchair.preferences2.PreferenceManager2;
@@ -183,6 +186,12 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
     private final Path mTmpPath = new Path();
     private final RectF mTmpRectF = new RectF();
     protected AllAppsPagedView mViewPager;
+    // LC: paged drawer (config_drawer_paged); null unless the host turned it on
+    @Nullable private ViewGroup mPagedContainer;
+    // LC: whether the grid stands in for the A-Z list (it may be hidden by a search meanwhile)
+    private boolean mPagedActive;
+    @Nullable private AllAppsPagedGrid mPagedGrid;
+    @Nullable private View mAddToHomeBar;
     protected FloatingHeaderView mHeader;
     protected final List<AllAppsRow> mAdditionalHeaderRows = new ArrayList<>();
     // LC: host drawer slots (header row is an AllAppsRow, footer is a fixed bottom slot)
@@ -631,6 +640,10 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         if (dragLayer.isEventOverView(mBottomSheetHandleArea, ev)) {
             return true;
         }
+        // LC: the paged grid never scrolls vertically, so a vertical swipe always moves the sheet
+        if (isPagedDrawerShown()) {
+            return true;
+        }
         AllAppsRecyclerView rv = getActiveRecyclerView();
         if (rv == null) {
             return true;
@@ -760,7 +773,12 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             // Will be called at the end of the animation.
             return;
         }
-        if (currentActivePage != SEARCH) {
+        // LC: a query deleted down to nothing ends the search, but the field is still being typed
+        // in; keep its focus and the keyboard instead of resetting it
+        View searchField = mSearchUiManager.getEditText();
+        boolean keepSearchField = currentActivePage != SEARCH
+                && searchField != null && searchField.hasFocus();
+        if (currentActivePage != SEARCH && !keepSearchField) {
             mActivityContext.hideKeyboard();
         }
         if (mAH.get(currentActivePage).mRecyclerView != null) {
@@ -774,7 +792,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             setupHeader();
         }
         mHeader.setActiveRV(currentActivePage);
-        reset(true /* animate */, !isSearching() /* exitSearch */);
+        reset(true /* animate */, !isSearching() && !keepSearchField /* exitSearch */);
         updateHostSlotFooter(); // LC
 
         mWorkManager.onActivePageChanged(currentActivePage);
@@ -899,6 +917,15 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
                 adapterHolder.mRecyclerView.setAdapter(null);
             }
         }
+        // LC: the paged grid sits beside the A-Z list and is rebuilt with it
+        if (mPagedContainer != null) {
+            removeView(mPagedContainer);
+            removeView(mAddToHomeBar);
+            mPagedContainer = null;
+            mPagedGrid = null;
+            mAddToHomeBar = null;
+            mPagedActive = false;
+        }
         View oldView = getAppsRecyclerViewContainer();
         int index = indexOfChild(oldView);
         removeView(oldView);
@@ -943,7 +970,73 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             layoutBelowSearchContainer(getSearchRecyclerView(), /* tabs= */ false);
         }
 
+        // LC: paged drawer, in the same place as the list, which it hides while it is used
+        if (!showTabs && getResources().getBoolean(R.bool.config_drawer_paged)) {
+            mPagedContainer = (ViewGroup) getLayoutInflater().inflate(
+                    R.layout.all_apps_paged_grid, this, false);
+            mPagedContainer.setLayoutParams(new RelativeLayout.LayoutParams(
+                    (RelativeLayout.LayoutParams) rvContainer.getLayoutParams()));
+            addView(mPagedContainer, indexOfChild(rvContainer) + 1);
+            mPagedGrid = mPagedContainer.findViewById(R.id.all_apps_paged_grid);
+            // Full screen, so no sheet handle.
+            mBottomSheetHandle.setVisibility(GONE);
+            mPagedGrid.setPageIndicator(mPagedContainer.findViewById(R.id.all_apps_paged_indicator));
+            // Over the search bar, drawn last so it is on top; visible only during a paged drag.
+            mAddToHomeBar = new AddToHomeBar(getContext());
+            RelativeLayout.LayoutParams barLp = new RelativeLayout.LayoutParams(0, 0);
+            barLp.addRule(RelativeLayout.ALIGN_TOP, R.id.search_container_all_apps);
+            barLp.addRule(RelativeLayout.ALIGN_BOTTOM, R.id.search_container_all_apps);
+            barLp.addRule(RelativeLayout.ALIGN_LEFT, R.id.search_container_all_apps);
+            barLp.addRule(RelativeLayout.ALIGN_RIGHT, R.id.search_container_all_apps);
+            int barInset = (int) Utilities.dpToPx(16);
+            barLp.setMargins(barInset, barInset / 2, barInset, barInset / 2);
+            addView(mAddToHomeBar, barLp);
+            if (mAH.get(AdapterHolder.MAIN).mAppsList instanceof LawnchairAlphabeticalAppsList<?> list) {
+                list.setOnPagedAppsChanged(apps -> {
+                    mPagedGrid.bind(apps);
+                    updatePagedVisibility();
+                    return kotlin.Unit.INSTANCE;
+                });
+                mPagedGrid.bind(list.pagedApps());
+            }
+        }
+
         updateSearchResultsVisibility();
+    }
+
+    /** LC: whether the drawer is the paged one, which is full screen and fades in. */
+    public boolean isPagedDrawer() {
+        return mPagedContainer != null;
+    }
+
+    /** LC: true while the paged grid stands in for the A-Z list. */
+    public boolean isPagedDrawerShown() {
+        return mPagedContainer != null && mPagedContainer.getVisibility() == VISIBLE;
+    }
+
+    // LC: show the paged grid instead of the A-Z list when the list is in paged mode and no search
+    private void updatePagedVisibility() {
+        if (mPagedContainer == null) return;
+        mPagedActive = !mUsingTabs
+                && mAH.get(AdapterHolder.MAIN).mAppsList instanceof LawnchairAlphabeticalAppsList<?> list
+                && list.isPagedMode();
+        View rv = findViewById(R.id.apps_list_view);
+        if (mPagedActive) {
+            // The grid is the A-Z container now (getAppsRecyclerViewContainer), so the search
+            // transition fades it; the list stays hidden throughout.
+            if (rv != null) {
+                mPagedContainer.setPadding(0, rv.getPaddingTop(), 0, rv.getPaddingBottom());
+                rv.setVisibility(GONE);
+            }
+            mPagedContainer.setVisibility(isSearching() ? GONE : VISIBLE);
+            mFastScroller.setVisibility(GONE);
+        } else {
+            mPagedContainer.setVisibility(GONE);
+            if (rv != null && !isSearching()) {
+                rv.setVisibility(VISIBLE);
+                mFastScroller.setVisibility(VISIBLE);
+            }
+        }
     }
 
     void setupHeader() {
@@ -980,6 +1073,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         } else {
             layoutBelowSearchContainer(mHeader, false /* includeTabsMargin */);
         }
+        updatePagedVisibility(); // LC: the grid takes the new header height too
     }
 
     /**
@@ -1465,6 +1559,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
      * hidden while searching.
      */
     public ViewGroup getAppsRecyclerViewContainer() {
+        if (mPagedContainer != null && mPagedActive) return mPagedContainer; // LC: paged drawer
         return mViewPager != null ? mViewPager : findViewById(R.id.apps_list_view);
     }
 
@@ -1586,6 +1681,7 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             mHeader.setActiveRV(getCurrentPage());
         }
         updateHostSlotFooter(); // LC
+        updatePagedVisibility(); // LC
     }
 
     private void applyAdapterSideAndBottomPaddings(DeviceProfile grid) {
@@ -1792,7 +1888,18 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         // Draw full background panel if presenting on a sheet.
         int bottomSheetBackgroundColor = getBottomSheetBackgroundColor();
         float bottomSheetBackgroundAlpha = Color.alpha(bottomSheetBackgroundColor) / 255.0f;
-        if (hasBottomSheet) {
+        // LC: the paged drawer's panel is the whole screen and fades with the drawer, so the home
+        // screen fades out under it rather than being covered at once. Under One UI's blur there
+        // is none: that blur paints over the panel once the drawer is opaque, and a panel that
+        // shows only mid-swipe flashes as the drawer settles.
+        if (hasBottomSheet && isPagedDrawer()) {
+            if (!SamsungBlur.INSTANCE.isUsed(getContext())) {
+                mHeaderPaint.setColor(bottomSheetBackgroundColor);
+                mHeaderPaint.setAlpha((int) (bottomSheetBackgroundAlpha * 255 * getAlpha()));
+                canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), mHeaderPaint);
+            }
+            if (Flags.allAppsBlur()) return;
+        } else if (hasBottomSheet) {
             mHeaderPaint.setColor(bottomSheetBackgroundColor);
             mHeaderPaint.setAlpha((int) (bottomSheetBackgroundAlpha * 255));
 

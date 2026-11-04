@@ -15,6 +15,10 @@ class SearchItemDecorator(private val appsView: ActivityAllAppsContainerView<*>)
 
     private val searchDecorationPadding = resources.getDimensionPixelSize(R.dimen.search_decoration_padding)
 
+    // Over the paged drawer's blur the first result gets no highlight box (One UI); Enter still
+    // opens it.
+    private val showFocusHighlight = !resources.getBoolean(R.bool.config_drawer_paged)
+
     override fun getItemOffsets(
         outRect: Rect,
         view: View,
@@ -35,7 +39,7 @@ class SearchItemDecorator(private val appsView: ActivityAllAppsContainerView<*>)
                 if (background != null) {
                     val isHighlightedItem = child == searchAdapterProvider.highlightedItem
                     val inputHasFocus = appsView.searchUiManager.editText?.hasFocus() == true
-                    val isFocused = isHighlightedItem && inputHasFocus
+                    val isFocused = showFocusHighlight && isHighlightedItem && inputHasFocus
                     background.draw(c, child, isFocused)
                 }
             }

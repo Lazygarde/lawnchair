@@ -76,6 +76,9 @@ public class AppInfo extends ItemInfoWithIcon implements WorkspaceItemFactory {
      */
     public int uid = -1;
 
+    // LC: when the package was first installed, for the paged drawer's install order; 0 if unknown.
+    public long firstInstallTime;
+
     public AppInfo() {
         itemType = LauncherSettings.Favorites.ITEM_TYPE_APPLICATION;
     }
@@ -106,6 +109,7 @@ public class AppInfo extends ItemInfoWithIcon implements WorkspaceItemFactory {
             runtimeStatusFlags |= FLAG_DISABLED_QUIET_USER;
         }
         uid = info.getApplicationInfo().uid;
+        firstInstallTime = info.getFirstInstallTime(); // LC
         updateRuntimeFlagsForActivityTarget(this, info, userIconInfo, apiWrapper, pmHelper);
     }
 
@@ -115,6 +119,7 @@ public class AppInfo extends ItemInfoWithIcon implements WorkspaceItemFactory {
         title = Utilities.trim(info.title);
         intent = new Intent(info.intent);
         uid = info.uid;
+        firstInstallTime = info.firstInstallTime; // LC
     }
 
     @VisibleForTesting

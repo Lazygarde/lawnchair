@@ -320,6 +320,12 @@ class PreferenceManager2 @Inject constructor(
         defaultValue = setOf(),
     )
 
+    /** Paged drawer order: ComponentKey strings joined by '\n'; empty until the user moves an app. */
+    val drawerOrder = preference(
+        key = stringPreferencesKey(name = "drawer_order"),
+        defaultValue = "",
+    )
+
     val roundedWidgets = preference(
         key = booleanPreferencesKey(name = "rounded_widgets"),
         defaultValue = context.resources.getBoolean(R.bool.config_default_rounded_widgets),
@@ -879,8 +885,10 @@ class PreferenceManager2 @Inject constructor(
 
         initializeIconShape(iconShape.firstCached(this))
         iconShape.get()
-            .drop(1)
+            // LC: distinct first, then drop the current value; the other way round the first
+            // write of any key after start passes the filter and recreates the launcher
             .distinctUntilChanged()
+            .drop(1)
             .onEach { shape ->
                 initializeIconShape(shape)
                 L3ThemeManager.INSTANCE.get(context)
@@ -889,14 +897,18 @@ class PreferenceManager2 @Inject constructor(
             .launchIn(scope)
 
         hotseatMode.get()
-            .drop(1)
+            // LC: distinct first, then drop the current value; the other way round the first
+            // write of any key after start passes the filter and recreates the launcher
             .distinctUntilChanged()
+            .drop(1)
             .onEach { reloadHelper.restart() }
             .launchIn(scope)
 
         isHotseatEnabled.get()
-            .drop(1)
+            // LC: distinct first, then drop the current value; the other way round the first
+            // write of any key after start passes the filter and recreates the launcher
             .distinctUntilChanged()
+            .drop(1)
             .onEach {
                 reloadHelper.recreate()
                 reloadHelper.reloadGrid()
@@ -904,14 +916,18 @@ class PreferenceManager2 @Inject constructor(
             .launchIn(scope)
 
         hotseatQsbProvider.get()
-            .drop(1)
+            // LC: distinct first, then drop the current value; the other way round the first
+            // write of any key after start passes the filter and recreates the launcher
             .distinctUntilChanged()
+            .drop(1)
             .onEach { reloadHelper.recreate() }
             .launchIn(scope)
 
         enableLabelInDock.get()
-            .drop(1)
+            // LC: distinct first, then drop the current value; the other way round the first
+            // write of any key after start passes the filter and recreates the launcher
             .distinctUntilChanged()
+            .drop(1)
             .onEach { reloadHelper.reloadGrid() }
             .launchIn(scope)
     }

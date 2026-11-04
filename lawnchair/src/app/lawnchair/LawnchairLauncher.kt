@@ -57,6 +57,7 @@ import app.lawnchair.root.RootNotAvailableException
 import app.lawnchair.theme.ThemeProvider
 import app.lawnchair.ui.popup.LauncherOptionsPopup
 import app.lawnchair.ui.popup.LawnchairShortcut
+import app.lawnchair.util.SamsungBlur
 import app.lawnchair.util.getThemedIconPacksInstalled
 import app.lawnchair.util.unsafeLazy
 import com.android.launcher3.BaseActivity
@@ -642,6 +643,18 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
         } catch (_: Throwable) {
         }
 
+        // 1b. One UI turns the cross-window blur off (Galaxy S24: mBlurEnabled=false) and blurs
+        // through its own API. The blur paints over whatever the view covers in this window, so it
+        // goes on the view that fades in with the swipe, and the home screen shows through it:
+        // the drawer, and the in-process overlay left of the home screen, at full blur.
+        // Darkened a little, as One UI's drawer is, so labels read over a light wallpaper.
+        if (SamsungBlur.isUsed(this)) {
+            appsView?.let { SamsungBlur.apply(it, allAppsBlur.toInt(), SAMSUNG_BLUR_TINT) }
+            (mOverlayManager as? InProcessOverlayManager)?.containerView?.let {
+                SamsungBlur.apply(it, if (overlayProgress > 0f) maxBlur else 0, SAMSUNG_BLUR_TINT)
+            }
+        }
+
         // 2. SurfaceControl background blur fallback (wallpaper layer blur in SurfaceFlinger)
         try {
             val surface = getBaseSurface()
@@ -780,6 +793,9 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
     companion object {
         private const val FLAG_RECREATE = 1 shl 0
         private const val FLAG_RESTART = 1 shl 1
+
+        // Black at 30%: One UI's drawer is this much darker than the blurred wallpaper.
+        private const val SAMSUNG_BLUR_TINT = 0x4D000000
 
         var sRestartFlags = 0
 

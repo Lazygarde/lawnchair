@@ -1,11 +1,13 @@
 package app.lawnchair.allapps
 
 import android.content.Context
+import android.os.Process
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import app.lawnchair.allapps.paged.DrawerOrder
 import app.lawnchair.data.folder.FolderEntry
 import app.lawnchair.data.folder.model.FolderViewModel
 import app.lawnchair.drawerslots.DrawerSlot
@@ -20,6 +22,7 @@ import app.lawnchair.preferences2.PreferenceManager2
 import app.lawnchair.util.categorizeAppsWithSystemAndGoogle
 import app.lawnchair.util.observeOnce
 import com.android.launcher3.InvariantDeviceProfile.OnIDPChangeListener
+import com.android.launcher3.R
 import com.android.launcher3.allapps.AllAppsStore
 import com.android.launcher3.allapps.AlphabeticalAppsList
 import com.android.launcher3.allapps.BaseAllAppsAdapter
@@ -55,6 +58,14 @@ class LawnchairAlphabeticalAppsList<T>(
         (context as? ComponentActivity)?.application ?: context.launcher.application,
     )
     private val folderList = mutableListOf<FolderEntry>()
+
+    // Paged drawer (config_drawer_paged): the saved order and the apps as last laid out.
+    private val pagedEnabled = supportsHostSlots && context.resources.getBoolean(R.bool.config_drawer_paged)
+    private var savedOrder: List<String> = emptyList()
+    private var pagedApps: List<AppInfo> = emptyList()
+
+    /** Called with the ordered apps each time the paged list is rebuilt. */
+    var onPagedAppsChanged: ((List<AppInfo>) -> Unit)? = null
     private val filteredList = mutableListOf<AppInfo>()
 
     // Re-runs the list when INLINE slots change (see DrawerSlotController.addInlineListener).
@@ -72,7 +83,37 @@ class LawnchairAlphabeticalAppsList<T>(
         } catch (t: Throwable) {
             Log.w(TAG, "Failed to initialize hidden apps", t)
         }
+        if (pagedEnabled) {
+            try {
+                prefs2.drawerOrder.onEach(launchIn = context.launcher.lifecycleScope) {
+                    savedOrder = it.split('\n').filter(String::isNotEmpty)
+                    onAppsUpdated()
+                }
+            } catch (t: Throwable) {
+                Log.w(TAG, "Failed to initialize drawer order", t)
+            }
+        }
         observeFolders()
+    }
+
+    /**
+     * True when the personal list is shown as pages: the host turned it on and every app belongs
+     * to this user (no work profile, no private space). Never for search results or the work list.
+     */
+    fun isPagedMode(): Boolean =
+        pagedEnabled && !isWorkAppsList && appsStore.apps.all { it.user == Process.myUserHandle() }
+
+    /** The ordered, filtered apps the paged grid shows. */
+    fun pagedApps(): List<AppInfo> = pagedApps
+
+    override fun getAppComparator(): Comparator<AppInfo> {
+        if (!isPagedMode()) return super.getAppComparator()
+        val order = DrawerOrder.merge(
+            savedOrder,
+            appsStore.apps.map { DrawerOrder.Entry(it.toComponentKey().toString(), it.firstInstallTime, it.title?.toString().orEmpty()) },
+        )
+        val index = order.withIndex().associate { (i, key) -> key to i }
+        return compareBy { index[it.toComponentKey().toString()] ?: Int.MAX_VALUE }
     }
 
     override fun onDestroy(owner: LifecycleOwner) {
@@ -107,6 +148,12 @@ class LawnchairAlphabeticalAppsList<T>(
 
         // Show app drawer folders only on main profile, to prevent state complexity
         if (isWorkOrPrivateSpace(appList)) return super.addAppsWithSections(appList, position)
+
+        // Paged drawer: a flat list in the comparator's order, no sections, no folders.
+        if (isPagedMode()) {
+            appList.filterNotNull().forEach { mAdapterItems.add(AdapterItem.asApp(it)) }
+            return position + appList.count { it != null }
+        }
 
         if (!drawerListDefault) {
             val validApps = appList.mapNotNull { it }
@@ -162,6 +209,12 @@ class LawnchairAlphabeticalAppsList<T>(
         fastScrollerSections: MutableList<FastScrollSectionInfo>,
     ) {
         if (!supportsHostSlots || hasSearchResults()) return
+        if (isPagedMode()) {
+            fastScrollerSections.clear()
+            pagedApps = items.mapNotNull { it.itemInfo as? AppInfo }
+            onPagedAppsChanged?.invoke(pagedApps)
+            return
+        }
         val perRow = numAppsPerRow
         if (perRow <= 0) return
         val controller = DrawerSlotController.get(context) ?: return

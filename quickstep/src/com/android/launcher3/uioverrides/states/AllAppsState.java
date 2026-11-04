@@ -163,7 +163,7 @@ public class AllAppsState extends LauncherState {
         return new PageAlphaProvider(DECELERATE_2) {
             @Override
             public float getPageAlpha(int pageIndex) {
-                return isWorkspaceVisible(launcher.getDeviceProfile())
+                return isWorkspaceVisible(launcher)
                         ? superPageAlphaProvider.getPageAlpha(pageIndex)
                         : 0;
             }
@@ -173,13 +173,16 @@ public class AllAppsState extends LauncherState {
     @Override
     public int getVisibleElements(Launcher launcher) {
         int elements = ALL_APPS_CONTENT | FLOATING_SEARCH_BAR;
-        if (isWorkspaceVisible(launcher.getDeviceProfile())) {
+        if (isWorkspaceVisible(launcher)) {
             elements |= HOTSEAT_ICONS;
         }
         return elements;
     }
 
-    private static boolean isWorkspaceVisible(DeviceProfile deviceProfile) {
+    private static boolean isWorkspaceVisible(Launcher launcher) {
+        // LC: the paged drawer is full screen and the home screen fades out under it
+        if (launcher.getAppsView().isPagedDrawer()) return false;
+        DeviceProfile deviceProfile = launcher.getDeviceProfile();
         return deviceProfile.getDeviceProperties().isTablet() || (Flags.allAppsSheetForHandheld() && Flags.allAppsBlur());
     }
 
