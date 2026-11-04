@@ -125,9 +125,11 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
 
     private final ActivityContext mActivity;
 
-    // LC: dock spread edge to edge (config_dock_centered_columns), one cell per icon; a gap
+    // LC: dock spread over its width (config_dock_centered_columns), one cell per icon; a gap
     // opens under an app dragged over it, where its x falls between the icons shown
     private static final int DOCK_GAP_ANIM_MS = 150;
+    // A full dock's icons are a little smaller, so five do not look crowded (One UI).
+    private static final float FULL_DOCK_ICON_SCALE = 0.92f;
     private final boolean mDockCenteredEnabled;
     private boolean mDockDragging;
     private boolean mDragFromDock;
@@ -381,15 +383,6 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
                 }
             }
         }
-
-        // LC: dock spread edge to edge, through the same translation hook as the bubble bar
-        // (which never applies together with it, see isDockCentered)
-        if (isDockCentered()) {
-            for (CellLayout page : getPageLayouts()) {
-                page.getShortcutsAndWidgets().setTranslationProvider(
-                        cellX -> getDockCenteredTranslation(page, cellX));
-            }
-        }
     }
 
     /**
@@ -401,19 +394,6 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
         return mDockCenteredEnabled && !mHasVerticalHotseat
                 && dp.numHotseatRows == 1 && dp.numHotseatPages == 1
                 && !dp.shouldAdjustHotseatForBubbleBar(getContext(), mActivity.hasBubbles());
-    }
-
-    /** LC: shift, inside its own cell, of the icon at {@code cellX} (see DockCentering). */
-    private float getDockCenteredTranslation(CellLayout page, int cellX) {
-        ShortcutAndWidgetContainer icons = page.getShortcutsAndWidgets();
-        for (int i = 0; i < icons.getChildCount(); i++) {
-            CellLayoutLayoutParams lp = (CellLayoutLayoutParams) icons.getChildAt(i).getLayoutParams();
-            if (lp.getCellX() == cellX) {
-                return DockCentering.INSTANCE.offset(lp.x, page.getCellWidth(), page.getCountX(),
-                        mActivity.getDeviceProfile().numShownHotseatIcons, page.mBorderSpace.x);
-            }
-        }
-        return 0;
     }
 
     /**
@@ -444,6 +424,7 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
             }
         }
         page.setGridSize(Math.max(1, Math.min(maxCols, n)), 1);
+        updateDockIconScale(children, n, maxCols);
         // setGridSize forgets the occupied cells, and the icons' container keeps the old cell
         // positions unless it is measured again.
         for (View child : children) page.markCellsAsOccupiedForView(child);
@@ -494,7 +475,7 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
         for (int j = 0; j < others.size(); j++) {
             int cell = mDockGapCell >= 0 && j >= mDockGapCell ? j + 1 : j;
             float center = DockCentering.INSTANCE.center(rtl ? cols - 1 - cell : cell,
-                    Math.max(1, cols), maxCols, width, page.mBorderSpace.x);
+                    Math.max(1, cols), width, page.mBorderSpace.x);
             if (Math.abs(px - center) < core) {
                 outCell[0] = cell;
                 outCell[1] = 0;
@@ -520,6 +501,17 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
         cell[0] = mDockGapCell;
         cell[1] = 0;
         return true;
+    }
+
+    /**
+     * LC: icons of a dock of {@code cols} cells: smaller once it is full. Through the reorder
+     * bounce scale, which the grid's reorder animations return to, so they keep it.
+     */
+    private void updateDockIconScale(List<View> icons, int cols, int maxCols) {
+        float scale = cols >= maxCols ? FULL_DOCK_ICON_SCALE : 1f;
+        for (View icon : icons) {
+            if (icon instanceof Reorderable item) item.setReorderBounceScale(scale);
+        }
     }
 
     /** LC: the dock's icons in cell order, without the one being dragged out of it. */
@@ -548,7 +540,9 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
         float[] oldX = new float[others.size()];
         for (int j = 0; j < others.size(); j++) oldX[j] = others.get(j).getX();
         int maxCols = mActivity.getDeviceProfile().numShownHotseatIcons;
-        page.setGridSize(Math.max(1, Math.min(maxCols, others.size() + (gap >= 0 ? 1 : 0))), 1);
+        int cols = others.size() + (gap >= 0 ? 1 : 0);
+        page.setGridSize(Math.max(1, Math.min(maxCols, cols)), 1);
+        updateDockIconScale(others, cols, maxCols);
         for (int j = 0; j < others.size(); j++) {
             View child = others.get(j);
             ((CellLayoutLayoutParams) child.getLayoutParams())

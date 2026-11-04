@@ -4,57 +4,33 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 /**
- * The dock has as many cells as icons (one more while an app is dragged in), filling the width;
- * each icon is shifted inside its own cell so the row runs edge to edge at the full dock's spacing.
- * Width 1000, at most 5 columns: a full-dock slot is 200 wide, so edge centers are 100 and 900.
+ * The dock has as many cells as icons, filling its width, and each icon sits in the middle of its
+ * cell (One UI): one in the middle, two at a quarter in from each side, five at the edges.
+ * Width 1000, no border unless a test says so.
  */
 class DockCenteringTest {
 
-    private fun offset(left: Int, cols: Int) = DockCentering.offset(
-        left = left, cellWidth = 1000 / cols, cols = cols, maxCols = 5, border = 0,
-    )
+    private fun centers(cols: Int, border: Int = 0) =
+        (0 until cols).map { DockCentering.center(it, cols, 1000, border) }
 
     @Test
-    fun fullDock_noShift() = assertEquals(listOf(0f, 0f, 0f, 0f, 0f), (0 until 5).map { offset(it * 200, 5) })
+    fun one_inMiddle() = assertEquals(listOf(500f), centers(1))
 
-    // 3 cells of 333: centers 166.5 / 500 / 833.5 move to 100 / 500 / 900.
     @Test
-    fun three_leftMiddleRight() {
-        assertEquals(100f - 1000 / 3 / 2f, offset(0, 3), 1f)
-        assertEquals(0f, offset(333, 3), 1f)
-        assertEquals(900f - (666 + 1000 / 3 / 2f), offset(666, 3), 1f)
+    fun two_aQuarterInFromEachSide() = assertEquals(listOf(250f, 750f), centers(2))
+
+    @Test
+    fun three_fartherOut() {
+        val c = centers(3)
+        assertEquals(1000f / 6, c[0], 0.01f)
+        assertEquals(500f, c[1], 0.01f)
+        assertEquals(5000f / 6, c[2], 0.01f)
     }
 
     @Test
-    fun two_atBothEdges() {
-        assertEquals(100f - 250f, offset(0, 2), 0.01f)
-        assertEquals(900f - 750f, offset(500, 2), 0.01f)
-    }
+    fun five_atTheEdges() = assertEquals(listOf(100f, 300f, 500f, 700f, 900f), centers(5))
 
+    // Matches CellLayout's cells: cell width (width - borders) / cols, a border between cells.
     @Test
-    fun one_inMiddle() = assertEquals(0f, offset(0, 1), 0.01f)
-
-    // The shift never leaves the icon's own cell, so where it shows is where it drops.
-    @Test
-    fun staysInsideItsCell() {
-        for (cols in 1..5) {
-            val cell = 1000 / cols
-            for (i in 0 until cols) {
-                val center = i * cell + cell / 2f + offset(i * cell, cols)
-                assert(center >= i * cell && center <= (i + 1) * cell) { "cols=$cols i=$i center=$center" }
-            }
-        }
-    }
-
-    // RTL mirrors lp.x, so the cell index comes from the position, not the cellX.
-    @Test
-    fun indexFromPosition() = assertEquals(offset(500, 2), DockCentering.offset(500, 500, 2, 5, 0), 0f)
-
-    @Test
-    fun center_edgesAndMiddle() {
-        assertEquals(100f, DockCentering.center(0, 3, 5, 1000, 0), 0.01f)
-        assertEquals(500f, DockCentering.center(1, 3, 5, 1000, 0), 0.01f)
-        assertEquals(900f, DockCentering.center(2, 3, 5, 1000, 0), 0.01f)
-        assertEquals(500f, DockCentering.center(0, 1, 5, 1000, 0), 0.01f)
-    }
+    fun border_betweenCells() = assertEquals(listOf(245f, 755f), centers(2, border = 20))
 }
