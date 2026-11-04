@@ -23,7 +23,6 @@ import com.android.launcher3.celllayout.CellLayoutLayoutParams
 import com.android.launcher3.dragndrop.DragOptions
 import com.android.launcher3.model.data.AppInfo
 import com.android.launcher3.model.data.ItemInfo
-import com.android.launcher3.pageindicators.PageIndicatorDots
 import com.android.launcher3.util.ComponentKey
 import com.android.launcher3.views.ActivityContext
 import kotlinx.coroutines.launch
@@ -36,7 +35,7 @@ import kotlinx.coroutines.launch
  * as the dragged one moves, the edge of the screen turns the page, and a drop saves the order.
  */
 class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
-    PagedView<PageIndicatorDots>(context, attrs), DragSource, DropTarget {
+    PagedView<DrawerPageDots>(context, attrs), DragSource, DropTarget {
 
     private val activityContext: ActivityContext = ActivityContext.lookupContext<BaseActivity>(context)
     private val launcher: Launcher get() = Launcher.getLauncher(context)
@@ -64,7 +63,7 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES)
     }
 
-    fun setPageIndicator(indicator: PageIndicatorDots) {
+    fun setPageIndicator(indicator: DrawerPageDots) {
         mPageIndicator = indicator
         indicator.setMarkersCount(childCount)
     }

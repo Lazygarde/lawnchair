@@ -14,7 +14,7 @@
         android:clipChildren="false"
         android:clipToPadding="false" />
 
-    <com.android.launcher3.pageindicators.PageIndicatorDots
+    <app.lawnchair.allapps.paged.DrawerPageDots
         android:id="@+id/all_apps_paged_indicator"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
