@@ -977,6 +977,8 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
                     (RelativeLayout.LayoutParams) rvContainer.getLayoutParams()));
             addView(mPagedContainer, indexOfChild(rvContainer) + 1);
             mPagedGrid = mPagedContainer.findViewById(R.id.all_apps_paged_grid);
+            // Full screen, so no sheet handle.
+            mBottomSheetHandle.setVisibility(GONE);
             mPagedGrid.setPageIndicator(mPagedContainer.findViewById(R.id.all_apps_paged_indicator));
             // Over the search bar, drawn last so it is on top; visible only during a paged drag.
             mAddToHomeBar = new AddToHomeBar(getContext());
@@ -999,6 +1001,11 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         }
 
         updateSearchResultsVisibility();
+    }
+
+    /** LC: whether the drawer is the paged one, which is full screen and fades in. */
+    public boolean isPagedDrawer() {
+        return mPagedContainer != null;
     }
 
     /** LC: true while the paged grid stands in for the A-Z list. */
@@ -1880,7 +1887,14 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         // Draw full background panel if presenting on a sheet.
         int bottomSheetBackgroundColor = getBottomSheetBackgroundColor();
         float bottomSheetBackgroundAlpha = Color.alpha(bottomSheetBackgroundColor) / 255.0f;
-        if (hasBottomSheet) {
+        // LC: the paged drawer's panel is the whole screen and fades with the drawer, so the home
+        // screen fades out under it rather than being covered at once
+        if (hasBottomSheet && isPagedDrawer()) {
+            mHeaderPaint.setColor(bottomSheetBackgroundColor);
+            mHeaderPaint.setAlpha((int) (bottomSheetBackgroundAlpha * 255 * getAlpha()));
+            canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), mHeaderPaint);
+            if (Flags.allAppsBlur()) return;
+        } else if (hasBottomSheet) {
             mHeaderPaint.setColor(bottomSheetBackgroundColor);
             mHeaderPaint.setAlpha((int) (bottomSheetBackgroundAlpha * 255));
 

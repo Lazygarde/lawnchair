@@ -182,15 +182,18 @@ class AllAppsSearchInput(context: Context, attrs: AttributeSet?) :
                     showLens = lensIntent != null,
                 )
 
-                val isLightCleanerPill = !Utilities.isDarkTheme(context)
+                // LC: over the paged drawer's blur the pill is see-through, as One UI's is
+                val overBlur = context.resources.getBoolean(R.bool.config_drawer_paged)
+                val isLightCleanerPill = !overBlur && !Utilities.isDarkTheme(context)
                 val backgroundColor = when {
+                    overBlur -> android.graphics.Color.WHITE
                     isLightCleanerPill -> 0xFFF2F4F7.toInt()
                     supportBlur -> ColorTokens.SearchboxHighlightBlur.resolveColor(context)
                     else -> ColorTokens.SearchboxHighlight.resolveColor(context)
                 }
 
                 val backgroundAlpha by animateIntAsState(
-                    if (isFocused || !queryEmpty) 0 else 92,
+                    if (isFocused || !queryEmpty) 0 else if (overBlur) 35 else 92,
                 )
 
                 // Ignore other theme attributes to preserve existing behavior
