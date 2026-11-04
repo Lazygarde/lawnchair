@@ -647,7 +647,7 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
         // 1b. One UI turns the cross-window blur off (Galaxy S24: mBlurEnabled=false) and blurs
         // through its own API. The blur paints over whatever the view covers in this window, so it
         // goes on the drawer, which fades in with the swipe, and the home screen shows through it.
-        if (!windowManager.isCrossWindowBlurEnabled && SamsungBlur.isAvailable) {
+        if (SamsungBlur.isUsed(this)) {
             appsView?.let { SamsungBlur.apply(it, targetBlur, Color.TRANSPARENT) }
         }
 

@@ -1,6 +1,9 @@
 package app.lawnchair.util
 
+import android.content.Context
+import android.os.Build
 import android.view.View
+import android.view.WindowManager
 import java.lang.reflect.Constructor
 import java.lang.reflect.Method
 
@@ -24,6 +27,16 @@ object SamsungBlur {
 
     private val api: Api? by lazy {
         runCatching {
+            // One UI ships the API on every model but blurs only where its window blur is on
+            // (CoreRune.FW_WINDOW_BLUR_SUPPORTED, read from this floating feature): a Galaxy A13
+            // has the class, logs "This model doesn't support window blur!" and draws nothing.
+            val supported = runCatching {
+                val features = Class.forName("com.samsung.android.feature.SemFloatingFeature")
+                val instance = features.getMethod("getInstance").invoke(null)
+                features.getMethod("getBoolean", String::class.java)
+                    .invoke(instance, "SEC_FLOATING_FEATURE_GRAPHICS_SUPPORT_3D_SURFACE_TRANSITION_FLAG") as Boolean
+            }.getOrDefault(true)
+            if (!supported) return@runCatching null
             val info = Class.forName("android.view.SemBlurInfo")
             val builder = Class.forName("android.view.SemBlurInfo\$Builder")
             Api(
@@ -37,6 +50,12 @@ object SamsungBlur {
     }
 
     val isAvailable: Boolean get() = api != null
+
+    /** Whether this blur stands in for Android's here: its API is there and Android's is off. */
+    fun isUsed(context: Context): Boolean = isAvailable && (
+        Build.VERSION.SDK_INT < Build.VERSION_CODES.S ||
+            context.getSystemService(WindowManager::class.java)?.isCrossWindowBlurEnabled != true
+        )
 
     /** Blurs what is behind [view] by [radius] px, tinted [color]; 0 takes the blur off. */
     fun apply(view: View, radius: Int, color: Int) {

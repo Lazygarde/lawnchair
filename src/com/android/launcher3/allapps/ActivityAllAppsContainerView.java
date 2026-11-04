@@ -114,6 +114,7 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import app.lawnchair.allapps.SearchBarBlurOverlay;
+import app.lawnchair.util.SamsungBlur;
 import app.lawnchair.preferences2.PreferenceCacheExtensionsKt;
 import static com.topjohnwu.superuser.internal.Utils.context;
 import app.lawnchair.drawerslots.DrawerSlotController;
@@ -1888,11 +1889,15 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
         int bottomSheetBackgroundColor = getBottomSheetBackgroundColor();
         float bottomSheetBackgroundAlpha = Color.alpha(bottomSheetBackgroundColor) / 255.0f;
         // LC: the paged drawer's panel is the whole screen and fades with the drawer, so the home
-        // screen fades out under it rather than being covered at once
+        // screen fades out under it rather than being covered at once. Under One UI's blur there
+        // is none: that blur paints over the panel once the drawer is opaque, and a panel that
+        // shows only mid-swipe flashes as the drawer settles.
         if (hasBottomSheet && isPagedDrawer()) {
-            mHeaderPaint.setColor(bottomSheetBackgroundColor);
-            mHeaderPaint.setAlpha((int) (bottomSheetBackgroundAlpha * 255 * getAlpha()));
-            canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), mHeaderPaint);
+            if (!SamsungBlur.INSTANCE.isUsed(getContext())) {
+                mHeaderPaint.setColor(bottomSheetBackgroundColor);
+                mHeaderPaint.setAlpha((int) (bottomSheetBackgroundAlpha * 255 * getAlpha()));
+                canvas.drawRect(0, 0, canvas.getWidth(), canvas.getHeight(), mHeaderPaint);
+            }
             if (Flags.allAppsBlur()) return;
         } else if (hasBottomSheet) {
             mHeaderPaint.setColor(bottomSheetBackgroundColor);
