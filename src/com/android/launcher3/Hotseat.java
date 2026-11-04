@@ -136,6 +136,7 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
     private int mDragHomeCell = -1;
     private boolean mDockOpenForDrop;
     private int mDockGapCell = -1;
+    @Nullable private View mDockDragged;
 
     PreferenceManager2 preferenceManager2;
     PreferenceManager preferenceManager;
@@ -434,7 +435,8 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
 
     /**
      * LC: called as a drag moves between drop layouts. Leaving the dock for a home screen page
-     * puts the dock back as it was before the drag: no gap, or the dragged icon's own cell.
+     * closes the gap at once, the dragged icon's included; the drag end puts that icon back in
+     * its cell if it did not land elsewhere.
      */
     public void onDockDropLayoutChanged(@Nullable CellLayout layout) {
         // null comes before every drop (Workspace.onDragExit): keep the gap for it; the drag end
@@ -443,7 +445,7 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
         boolean overDock = isHotseatPage(layout);
         if (overDock == mDockOpenForDrop) return;
         mDockOpenForDrop = overDock;
-        if (!overDock) setDockGap(mDragFromDock ? mDragHomeCell : -1);
+        if (!overDock) setDockGap(-1);
     }
 
     /**
@@ -520,7 +522,7 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
         List<View> others = new ArrayList<>();
         for (int i = 0; i < icons.getChildCount(); i++) {
             View child = icons.getChildAt(i);
-            if (!(mDragFromDock && child.getVisibility() != VISIBLE)) others.add(child);
+            if (child != mDockDragged) others.add(child);
         }
         others.sort((a, b) -> Integer.compare(
                 ((CellLayoutLayoutParams) a.getLayoutParams()).getCellX(),
@@ -586,6 +588,16 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
         mDragFromDock = dragObject.dragInfo != null
                 && dragObject.dragInfo.container == CONTAINER_HOTSEAT;
         mDragHomeCell = mDragFromDock ? dragObject.dragInfo.cellX : -1;
+        mDockDragged = null;
+        CellLayout page = getCurrentPageLayout();
+        if (mDragFromDock && page != null) {
+            ShortcutAndWidgetContainer icons = page.getShortcutsAndWidgets();
+            for (int i = 0; i < icons.getChildCount(); i++) {
+                if (icons.getChildAt(i).getTag() == dragObject.dragInfo) {
+                    mDockDragged = icons.getChildAt(i);
+                }
+            }
+        }
         // A drag out of the dock starts with its gap where the icon was; one from elsewhere
         // opens it once over the dock.
         mDockOpenForDrop = mDragFromDock;
@@ -595,6 +607,14 @@ public class Hotseat extends FrameLayout implements Insettable, DragController.D
 
     @Override
     public void onDragEnd() {
+        // Dragged out of the dock and back to it (cancelled, or no room elsewhere): its gap was
+        // closed on the way out, so open it again where the icon was.
+        CellLayout page = getCurrentPageLayout();
+        if (isDockCentered() && mDockDragged != null && page != null && mDockGapCell < 0
+                && mDockDragged.getParent() == page.getShortcutsAndWidgets()) {
+            setDockGap(mDragHomeCell);
+        }
+        mDockDragged = null;
         mDockDragging = false;
         mDockOpenForDrop = false;
         mDragFromDock = false;

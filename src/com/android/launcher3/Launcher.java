@@ -2078,6 +2078,11 @@ public class Launcher extends StatefulActivity<LauncherState>
         } else {
             return false;
         }
+        // LC: the spread dock closes the gap a removed app leaves (a drag packs it at its end)
+        if (itemInfo.container == CONTAINER_HOTSEAT && mHotseat != null
+                && !getDragController().isDragging()) {
+            mHotseat.updateDockCells();
+        }
         return true;
     }
 
