@@ -2,10 +2,11 @@ package app.lawnchair.allapps.paged
 
 import android.content.Context
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.util.AttributeSet
 import android.view.View
-import app.lawnchair.theme.color.tokens.ColorTokens
+
 import com.android.launcher3.pageindicators.PageIndicator
 import kotlin.math.abs
 
@@ -16,7 +17,9 @@ import kotlin.math.abs
 class DrawerPageDots(context: Context, attrs: AttributeSet?) : View(context, attrs), PageIndicator {
 
     private val paint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = ColorTokens.pageIndicatorDotColor.resolveColor(context)
+        // White over the blurred wallpaper, as the labels: the theme's dot colour (dark on a light
+        // wallpaper) all but vanished there.
+        color = Color.WHITE
     }
     // Small dots, spaced wide, as One UI draws them.
     private val radius = DOT_DP / 2 * resources.displayMetrics.density

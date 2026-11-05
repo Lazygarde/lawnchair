@@ -1,7 +1,7 @@
 package app.lawnchair.allapps.paged
 
 /**
- * The folders a paged drawer starts with: Google, Microsoft and the phone maker's own apps, as
+ * The folders a paged drawer starts with: the phone maker's own apps, Google and Microsoft, as
  * One UI groups them. Core apps (phone, camera, gallery, ...) stay out, and so does a group of one.
  */
 object DefaultDrawerFolders {
@@ -10,12 +10,13 @@ object DefaultDrawerFolders {
 
     private class Rule(val title: String, val manufacturer: String?, val prefixes: List<String>, val packages: Set<String> = emptySet())
 
+    // In output order: the maker's folder first, as One UI (Samsung, Google, Microsoft).
     private val RULES = listOf(
-        Rule("Google", null, listOf("com.google."), setOf("com.android.chrome")),
-        Rule("Microsoft", null, listOf("com.microsoft."), setOf("com.linkedin.android")),
         Rule("Samsung", "samsung", listOf("com.samsung.", "com.sec.")),
         Rule("Xiaomi", "xiaomi", listOf("com.miui.", "com.xiaomi.")),
         Rule("OPPO", "oppo", listOf("com.coloros.", "com.heytap.")),
+        Rule("Google", null, listOf("com.google."), setOf("com.android.chrome")),
+        Rule("Microsoft", null, listOf("com.microsoft."), setOf("com.linkedin.android", "com.touchtype.swiftkey")),
     )
 
     // ponytail: checked on an S24 (as One UI's own drawer) and a Pixel emulator only; the Xiaomi and

@@ -172,10 +172,13 @@ class LawnchairAlphabeticalAppsList<T>(
             prefs2.drawerDefaultFoldersDone.set(true)
             if (!untouched) return@launch
             val service = FolderService.INSTANCE.get(context)
-            DefaultDrawerFolders.group(keys, Build.MANUFACTURER).forEach { group ->
+            val ids = DefaultDrawerFolders.group(keys, Build.MANUFACTURER).map { group ->
                 val id = service.saveFolderInfo(group.title).toInt()
                 service.updateFolderWithItems(id, group.title, group.keys)
+                id
             }
+            // First on page 1, in group order; the apps follow in install order as before.
+            if (ids.isNotEmpty()) prefs2.drawerOrder.set(ids.joinToString("\n", transform = DrawerOrder::folderToken))
         }
     }
 

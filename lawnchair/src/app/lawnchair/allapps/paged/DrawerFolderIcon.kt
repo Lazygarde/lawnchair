@@ -3,10 +3,12 @@ package app.lawnchair.allapps.paged
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
+import androidx.core.graphics.ColorUtils
 import app.lawnchair.util.resolveFolderPreviewColor
 import com.android.launcher3.BaseActivity
 import com.android.launcher3.BubbleTextView
@@ -15,7 +17,7 @@ import com.android.launcher3.model.data.FolderInfo
 import com.android.launcher3.views.ActivityContext
 
 /**
- * A folder of the paged drawer: up to nine of its apps in a 3×3 grid on the home folders' colour,
+ * A folder of the paged drawer: up to nine of its apps in a 3×3 grid, in the icons' shape,
  * and its title. Tagged with a [FolderInfo] that never reaches the model (see [DrawerCell.Folder]).
  */
 class DrawerFolderIcon(context: Context, attrs: AttributeSet?) : BubbleTextView(context, attrs) {
@@ -32,35 +34,83 @@ class DrawerFolderIcon(context: Context, attrs: AttributeSet?) : BubbleTextView(
         setIcon(BitmapInfo.fromBitmap(preview(folder, size)).newIcon(context))
     }
 
-    // ponytail: a rounded square, not the user's icon shape; use the shape path if they differ.
+    // A folder reads as one more icon: the plate of its first app's icon (whatever shape the icon
+    // theme draws), filled with the plate colour the apps share, under up to nine of them. The
+    // plate is stretched to nearly the whole icon square, a little larger than an app icon's art.
     private fun preview(folder: DrawerCell.Folder, size: Int): Bitmap {
+        val icons = folder.apps.take(9).map { softwareIcon(it.bitmap.icon, size) }
+        val (plate, bounds) = plate(icons.first(), plateColor(icons))
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
-        paint.color = resolveFolderPreviewColor(context)
-        val radius = size * CORNER
-        canvas.drawRoundRect(RectF(0f, 0f, size.toFloat(), size.toFloat()), radius, radius, paint)
+        val margin = size * MARGIN
+        val area = RectF(margin, margin, size - margin, size - margin)
+        canvas.drawBitmap(plate, bounds, area, paint)
 
-        val inset = size * INSET
-        val gap = size * GAP
-        val cell = (size - 2 * inset - 2 * gap) / 3
-        val dst = Rect()
-        folder.apps.take(9).forEachIndexed { i, app ->
-            val left = inset + (i % 3) * (cell + gap)
-            val top = inset + (i / 3) * (cell + gap)
-            dst.set(left.toInt(), top.toInt(), (left + cell).toInt(), (top + cell).toInt())
-            // App icons are HARDWARE bitmaps, which a software canvas cannot draw: copy them.
-            // ponytail: up to 9 small copies per folder per rebuild; cache by key if it shows.
-            val icon = app.bitmap.icon
-            val src = if (icon.config == Bitmap.Config.HARDWARE) icon.copy(Bitmap.Config.ARGB_8888, false) else icon
-            canvas.drawBitmap(src, null, dst, paint)
+        val inset = area.width() * INSET
+        val gap = area.width() * GAP
+        val cell = (area.width() - 2 * inset - 2 * gap) / 3
+        val dst = RectF()
+        icons.forEachIndexed { i, icon ->
+            val left = area.left + inset + (i % 3) * (cell + gap)
+            val top = area.top + inset + (i / 3) * (cell + gap)
+            dst.set(left, top, left + cell, top + cell)
+            canvas.drawBitmap(icon, null, dst, paint)
         }
         return bitmap
     }
 
+    // App icons are HARDWARE bitmaps, which a software canvas cannot draw or read: copy them.
+    // ponytail: up to 9 small copies per folder per rebuild; cache by key if it shows.
+    private fun softwareIcon(icon: Bitmap, size: Int): Bitmap {
+        val soft = if (icon.config == Bitmap.Config.HARDWARE) icon.copy(Bitmap.Config.ARGB_8888, false) else icon
+        return if (soft.width == size && soft.height == size) soft else Bitmap.createScaledBitmap(soft, size, size, true)
+    }
+
+    // The icon's silhouette in [color], its soft edge kept and its faint shadow dropped, and the
+    // bounds of its solid part.
+    private fun plate(icon: Bitmap, color: Int): Pair<Bitmap, Rect> {
+        val w = icon.width
+        val h = icon.height
+        val pixels = IntArray(w * h)
+        icon.getPixels(pixels, 0, w, 0, 0, w, h)
+        val bounds = Rect(w, h, 0, 0)
+        val rgb = color and 0x00FFFFFF
+        for (i in pixels.indices) {
+            val a = Color.alpha(pixels[i])
+            if (a >= SOLID) bounds.union(i % w, i / w)
+            val edge = ((a - FAINT) * 255 / (SOLID - FAINT)).coerceIn(0, 255)
+            pixels[i] = (edge shl 24) or rgb
+        }
+        if (bounds.isEmpty) bounds.set(0, 0, w, h) else bounds.set(bounds.left, bounds.top, bounds.right + 1, bounds.bottom + 1)
+        return Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888) to bounds
+    }
+
+    // The colour most of the icons have just inside the left and top edges of their plate, where
+    // the art seldom reaches; the home folders' colour if none has a plate.
+    // ponytail: a sample of two points per icon; widen it if a theme's art fills the plate edge.
+    private fun plateColor(icons: List<Bitmap>): Int {
+        val samples = icons.flatMap { icon ->
+            val mid = icon.height / 2
+            val x = (0 until icon.width).firstOrNull { Color.alpha(icon.getPixel(it, mid)) >= SOLID }
+            val y = (0 until icon.height).firstOrNull { Color.alpha(icon.getPixel(icon.width / 2, it)) >= SOLID }
+            listOfNotNull(
+                x?.let { icon.getPixel((it + EDGE_IN).coerceAtMost(icon.width - 1), mid) },
+                y?.let { icon.getPixel(icon.width / 2, (it + EDGE_IN).coerceAtMost(icon.height - 1)) },
+            )
+        }.filter { Color.alpha(it) >= SOLID }
+        // Group near colours (4 bits a channel) and keep the most common group's first sample.
+        return samples.groupBy { it and QUANT }.maxByOrNull { it.value.size }?.value?.first()
+            ?: ColorUtils.setAlphaComponent(resolveFolderPreviewColor(context), 255)
+    }
+
     private companion object {
-        const val CORNER = 0.3f
-        const val INSET = 0.14f
-        const val GAP = 0.04f
+        const val MARGIN = 0.02f
+        const val INSET = 0.08f
+        const val GAP = 0.03f
+        const val FAINT = 110
+        const val SOLID = 200
+        const val EDGE_IN = 4
+        const val QUANT = 0x00F0F0F0
     }
 }

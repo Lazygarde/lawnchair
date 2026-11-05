@@ -43,8 +43,15 @@ class DefaultDrawerFoldersTest {
     )
 
     @Test
-    fun order_googleMicrosoftMaker() = assertEquals(
-        listOf("Google", "Microsoft", "Samsung"),
+    fun microsoft_includesSwiftKey() = assertEquals(
+        listOf("Microsoft"),
+        DefaultDrawerFolders.group(listOf(k("com.microsoft.skydrive"), k("com.touchtype.swiftkey")), "samsung").map { it.title },
+    )
+
+    // The maker's folder first, as One UI: Samsung, Google, Microsoft.
+    @Test
+    fun order_makerGoogleMicrosoft() = assertEquals(
+        listOf("Samsung", "Google", "Microsoft"),
         DefaultDrawerFolders.group(
             listOf(k("com.samsung.android.oneconnect"), k("com.sec.android.app.shealth"), k("com.microsoft.skydrive"), k("com.microsoft.office.onenote"), k("com.google.android.youtube"), k("com.google.android.gm")),
             "samsung",
