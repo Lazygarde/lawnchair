@@ -196,7 +196,9 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
 
     private boolean mLayoutHorizontal;
     private final boolean mIsRtl;
-    private final int mIconSize;
+    // LC: the icon size drawn, at most mBaseIconSize: onMeasure shrinks it so icon and label fit.
+    private int mIconSize;
+    private int mBaseIconSize;
 
     @ViewDebug.ExportedProperty(category = "launcher")
     private boolean mHideBadge = false;
@@ -318,6 +320,7 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
 
         mIconSize = a.getDimensionPixelSize(R.styleable.BubbleTextView_iconSizeOverride,
                 defaultIconSize);
+        mBaseIconSize = mIconSize; // LC
         a.recycle();
 
         mRunningAppIndicatorHeight =
@@ -1083,11 +1086,18 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
     @Override
     protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
         int height = MeasureSpec.getSize(heightMeasureSpec);
+        // LC: icon and label always fit the cell, whatever sized it (a large font, a two-line
+        // label, a cell scaled by a fixed factor: a Galaxy Z Fold7 folder cut its icons' tops).
+        int lines = fitIconAndLabel(widthMeasureSpec, heightMeasureSpec);
         if (mCenterVertically) {
             Paint.FontMetrics fm = getPaint().getFontMetrics();
+            int lineHeight = (int) Math.ceil(fm.bottom - fm.top);
             int cellHeightPx = mIconSize + getCompoundDrawablePadding() +
-                    (int) Math.ceil(fm.bottom - fm.top) * getCellSpecMaxTextLineCount();
-            setPadding(getPaddingLeft(), (height - cellHeightPx) / 2, getPaddingRight(),
+                    lineHeight * getCellSpecMaxTextLineCount();
+            // Centred as the cell spec says, but never above the top nor past the bottom.
+            int top = (height - cellHeightPx) / 2;
+            top = Math.min(top, height - mIconSize - getCompoundDrawablePadding() - lineHeight * lines);
+            setPadding(getPaddingLeft(), Math.max(0, top), getPaddingRight(),
                     getPaddingBottom());
         }
         if (shouldDrawAppContrastTile()) {
@@ -1101,9 +1111,44 @@ public class BubbleTextView extends TextView implements ItemInfoUpdateReceiver,
                     getPaddingBottom());
         }
         setSingleLine(false);
-        setMaxLines(2);
+        setMaxLines(lines);
         setEllipsize(TruncateAt.END);
         super.onMeasure(widthMeasureSpec, heightMeasureSpec);
+    }
+
+    /**
+     * LC: the label's lines (one or two) and the icon's size so both fit [heightMeasureSpec]: a
+     * second line goes first, then the icon shrinks, never below half its size. Returns the lines.
+     */
+    private int fitIconAndLabel(int widthMeasureSpec, int heightMeasureSpec) {
+        int height = MeasureSpec.getSize(heightMeasureSpec);
+        int width = MeasureSpec.getSize(widthMeasureSpec);
+        boolean bounded = MeasureSpec.getMode(heightMeasureSpec) != MeasureSpec.UNSPECIFIED
+                && height > 0 && !mLayoutHorizontal;
+        int textWidth = width - getPaddingLeft() - getPaddingRight();
+        CharSequence text = getText();
+        int lines = text != null && textWidth > 0
+                && getPaint().measureText(text, 0, text.length()) > textWidth ? 2 : 1;
+        int icon = mBaseIconSize;
+        if (bounded) {
+            Paint.FontMetrics fm = getPaint().getFontMetrics();
+            int lineHeight = (int) Math.ceil(fm.bottom - fm.top);
+            int top = mCenterVertically ? 0 : getPaddingTop();
+            int room = height - top - getPaddingBottom() - getCompoundDrawablePadding();
+            if (lines == 2 && room - 2 * lineHeight < mBaseIconSize) lines = 1;
+            icon = Math.max(mBaseIconSize / 2, Math.min(mBaseIconSize, room - lines * lineHeight));
+            if (textWidth > 0) icon = Math.min(icon, Math.max(mBaseIconSize / 2, textWidth));
+        }
+        if (icon != mIconSize) {
+            mIconSize = icon;
+            if (mIcon != null) {
+                mDisableRelayout = true;
+                mIcon.setBounds(0, 0, mIconSize, mIconSize);
+                updateIcon(mIcon);
+                mDisableRelayout = false;
+            }
+        }
+        return lines;
     }
 
     @Override
