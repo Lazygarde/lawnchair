@@ -645,14 +645,10 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
 
         // 1b. One UI turns the cross-window blur off (Galaxy S24: mBlurEnabled=false) and blurs
         // through its own API. The blur paints over whatever the view covers in this window, so it
-        // goes on the view that fades in with the swipe, and the home screen shows through it:
-        // the drawer, and the in-process overlay left of the home screen, at full blur.
-        // Darkened a little, as One UI's drawer is, so labels read over a light wallpaper.
+        // goes on the drawer, which fades in with the swipe, and the home screen shows through it.
         if (SamsungBlur.isUsed(this)) {
-            appsView?.let { SamsungBlur.apply(it, allAppsBlur.toInt(), SAMSUNG_BLUR_TINT) }
-            (mOverlayManager as? InProcessOverlayManager)?.containerView?.let {
-                SamsungBlur.apply(it, if (overlayProgress > 0f) maxBlur else 0, SAMSUNG_BLUR_TINT)
-            }
+            // Darkened a little, as One UI's drawer is, so labels read over a light wallpaper.
+            appsView?.let { SamsungBlur.apply(it, targetBlur, SAMSUNG_BLUR_TINT) }
         }
 
         // 2. SurfaceControl background blur fallback (wallpaper layer blur in SurfaceFlinger)

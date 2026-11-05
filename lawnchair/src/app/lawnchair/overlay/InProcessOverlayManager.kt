@@ -28,9 +28,6 @@ class InProcessOverlayManager(
     private var overlayCallbacks: LauncherOverlayCallbacks? = null
     var currentProgress: Float = 0f
         private set
-
-    /** The overlay's view, which fades in with the swipe (the launcher blurs behind it). */
-    val containerView: android.view.View? get() = overlayContainer
     private var snapAnimator: ValueAnimator? = null
     private var isDragging: Boolean = false
 
