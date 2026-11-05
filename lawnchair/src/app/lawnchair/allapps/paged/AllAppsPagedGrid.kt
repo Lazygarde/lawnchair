@@ -69,6 +69,8 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
     private var pageFlipDir = 0
 
     // Folder creation: the icon the dragged app is held over, and whether the hold was long enough.
+    // The app being dragged out of a folder: its cell stays empty through rebinds until the drop.
+    private var pulledKey: String? = null
     private var mergeKey: String? = null
     private var mergeReady = false
     private var mergeRing: PreviewBackground? = null
@@ -123,12 +125,14 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         icons.clear()
         val pages = PagedGridMath.pageCount(cells.size, perPage)
         repeat(pages) { addView(newPage(), LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)) }
+        val drawerApps by lazy { cells.flatMap { if (it is DrawerCell.Folder) it.apps else listOf((it as DrawerCell.App).app) } }
         cells.forEachIndexed { i, cell ->
             val icon = when (cell) {
                 is DrawerCell.App -> newIcon(this, cell.app)
-                is DrawerCell.Folder -> newFolderIcon(this, cell)
+                is DrawerCell.Folder -> newFolderIcon(this, cell, drawerApps)
             }
             icons[cell.key] = icon
+            if (cell.key == pulledKey) icon.visibility = INVISIBLE
             place(icon, i)
         }
         shownKeys = cells.map { it.key }
@@ -172,9 +176,9 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         return icon
     }
 
-    private fun newFolderIcon(parent: ViewGroup, folder: DrawerCell.Folder): DrawerFolderIcon {
+    private fun newFolderIcon(parent: ViewGroup, folder: DrawerCell.Folder, drawerApps: List<AppInfo>): DrawerFolderIcon {
         val icon = LayoutInflater.from(context).inflate(R.layout.drawer_folder_icon, parent, false) as DrawerFolderIcon
-        icon.bind(folder)
+        icon.bind(folder, drawerApps)
         styleIcon(icon)
         icon.setOnClickListener { DrawerFolderView.show(launcher, this, folder, editTitle = false) }
         // Drags within the drawer, as an app does; it never leaves it (see AddToHomeBar).
@@ -394,6 +398,7 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
     override fun onDropCompleted(target: View?, d: DropTarget.DragObject, success: Boolean) {
         val wasHere = target === this
         clearMerge()
+        pulledKey = null
         dragKey = null
         dragOrder = null
         targetIndex = -1
@@ -404,6 +409,34 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
             pendingBind = false
             rebuild()
         }
+    }
+
+    /**
+     * Takes [key] out of folder [folderId], for a drag out of the folder's panel: the app takes the
+     * folder's cell and the folder moves one on, or, left with one app, gives way to it. Shown at
+     * once, then saved. Returns the app's new icon, hidden as the dragged one's cell is.
+     */
+    fun pullOut(folderId: Int, key: String): BubbleTextView? {
+        val index = cells.indexOfFirst { it is DrawerCell.Folder && it.id == folderId }
+        val folder = cells.getOrNull(index) as? DrawerCell.Folder ?: return null
+        val app = folder.apps.firstOrNull { it.toComponentKey().toString() == key } ?: return null
+        val rest = folder.apps - app
+        val left: DrawerCell = if (rest.size >= 2) folder.copy(apps = rest) else DrawerCell.App(rest.single())
+        cells = cells.toMutableList().apply { set(index, left); add(index, DrawerCell.App(app)) }
+        rebuild()
+
+        val service = FolderService.INSTANCE.get(context)
+        val order = cells.map { it.key }
+        launcher.lifecycleScope.launch {
+            if (rest.size >= 2) {
+                service.updateFolderWithItems(folderId, folder.title, rest.map { it.toComponentKey().toString() })
+            } else {
+                service.deleteFolderInfo(folderId)
+            }
+            save(order)
+        }
+        pulledKey = key
+        return icons[key]?.apply { visibility = INVISIBLE }
     }
 
     private fun save(order: List<String>) {

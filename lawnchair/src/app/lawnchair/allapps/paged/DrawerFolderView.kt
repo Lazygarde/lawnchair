@@ -21,9 +21,14 @@ import androidx.recyclerview.widget.RecyclerView
 import app.lawnchair.data.folder.service.FolderService
 import com.android.launcher3.AbstractFloatingView
 import com.android.launcher3.BubbleTextView
+import com.android.launcher3.DropTarget
 import com.android.launcher3.Launcher
+import com.android.launcher3.LauncherState
 import com.android.launcher3.R
+import com.android.launcher3.dragndrop.DragController
+import com.android.launcher3.dragndrop.DragOptions
 import com.android.launcher3.model.data.AppInfo
+import com.android.launcher3.touch.ItemLongClickListener
 import com.android.launcher3.util.Themes
 import kotlinx.coroutines.launch
 
@@ -38,6 +43,7 @@ import kotlinx.coroutines.launch
 @SuppressLint("ViewConstructor")
 class DrawerFolderView private constructor(
     private val launcher: Launcher,
+    private val grid: AllAppsPagedGrid,
     private val folder: DrawerCell.Folder,
     // The drawer under the panel (its pages and search bar): hidden while open, so only the blur
     // shows behind, as in One UI.
@@ -164,6 +170,26 @@ class DrawerFolderView private constructor(
         }
     }
 
+    /**
+     * A long press on an app drags it out, as Launcher3's folder does: the drawer takes it out of
+     * the folder first, then the drag starts from the icon under the finger with the drawer as its
+     * source, and the panel closes as it starts.
+     */
+    private fun dragOut(v: View): Boolean {
+        if (!ItemLongClickListener.canStartDrag(launcher) || !launcher.isInState(LauncherState.ALL_APPS)) return false
+        val app = v.tag as? AppInfo ?: return false
+        grid.pullOut(folder.id, app.toComponentKey().toString()) ?: return false
+        launcher.dragController.addDragListener(object : DragController.DragListener {
+            override fun onDragStart(dragObject: DropTarget.DragObject, options: DragOptions) {
+                launcher.dragController.removeDragListener(this)
+                close(false)
+            }
+            override fun onDragEnd() = launcher.dragController.removeDragListener(this)
+        })
+        launcher.workspace.beginDragShared(v, grid, DragOptions().apply { fromPagedDrawer = true })
+        return true
+    }
+
     private fun hideKeyboard() {
         launcher.getSystemService(InputMethodManager::class.java)?.hideSoftInputFromWindow(windowToken, 0)
     }
@@ -184,6 +210,7 @@ class DrawerFolderView private constructor(
                 launcher.itemOnClickListener.onClick(v)
                 close(false)
             }
+            icon.setOnLongClickListener(::dragOut)
             return object : RecyclerView.ViewHolder(icon) {}
         }
 
@@ -214,7 +241,7 @@ class DrawerFolderView private constructor(
                 grid.parent as? View,
                 launcher.appsView.findViewById<View>(R.id.search_container_all_apps),
             )
-            return DrawerFolderView(launcher, folder, behind).also { it.open(editTitle) }
+            return DrawerFolderView(launcher, grid, folder, behind).also { it.open(editTitle) }
         }
     }
 }

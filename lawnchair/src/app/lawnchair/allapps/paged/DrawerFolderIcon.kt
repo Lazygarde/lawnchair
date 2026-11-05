@@ -8,11 +8,11 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
-import androidx.core.graphics.ColorUtils
-import app.lawnchair.util.resolveFolderPreviewColor
+import android.util.LruCache
 import com.android.launcher3.BaseActivity
 import com.android.launcher3.BubbleTextView
 import com.android.launcher3.icons.BitmapInfo
+import com.android.launcher3.model.data.AppInfo
 import com.android.launcher3.model.data.FolderInfo
 import com.android.launcher3.views.ActivityContext
 
@@ -22,7 +22,8 @@ import com.android.launcher3.views.ActivityContext
  */
 class DrawerFolderIcon(context: Context, attrs: AttributeSet?) : BubbleTextView(context, attrs) {
 
-    fun bind(folder: DrawerCell.Folder) {
+    /** [drawerApps] are all the drawer's apps: the plate colour is the icon theme's, not the folder's. */
+    fun bind(folder: DrawerCell.Folder, drawerApps: List<AppInfo>) {
         tag = FolderInfo().apply {
             id = folder.id
             title = folder.title
@@ -31,15 +32,20 @@ class DrawerFolderIcon(context: Context, attrs: AttributeSet?) : BubbleTextView(
         text = folder.title
         contentDescription = folder.title
         val size = ActivityContext.lookupContext<BaseActivity>(context).deviceProfile.allAppsProfile.iconSizePx
-        setIcon(BitmapInfo.fromBitmap(preview(folder, size)).newIcon(context))
+        val color = plateColor(drawerApps, size)
+        // Drawn once per set of icons: copying hardware icons back from the GPU on every rebind
+        // made the drawer lag. A new icon (theme change, update) is a new bitmap, so a new key.
+        val key = "$size|$color|" + folder.apps.take(9).joinToString(",") { System.identityHashCode(it.bitmap.icon).toString() }
+        val preview = previews.get(key) ?: preview(folder, size, color).also { previews.put(key, it) }
+        setIcon(BitmapInfo.fromBitmap(preview).newIcon(context))
     }
 
     // A folder reads as one more icon: the plate of its first app's icon (whatever shape the icon
     // theme draws), filled with the plate colour the apps share, under up to nine of them. The
     // plate is stretched to nearly the whole icon square, a little larger than an app icon's art.
-    private fun preview(folder: DrawerCell.Folder, size: Int): Bitmap {
+    private fun preview(folder: DrawerCell.Folder, size: Int, color: Int): Bitmap {
         val icons = folder.apps.take(9).map { softwareIcon(it.bitmap.icon, size) }
-        val (plate, bounds) = plate(icons.first(), plateColor(icons))
+        val (plate, bounds) = plate(icons.first(), color)
         val bitmap = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
@@ -61,7 +67,6 @@ class DrawerFolderIcon(context: Context, attrs: AttributeSet?) : BubbleTextView(
     }
 
     // App icons are HARDWARE bitmaps, which a software canvas cannot draw or read: copy them.
-    // ponytail: up to 9 small copies per folder per rebuild; cache by key if it shows.
     private fun softwareIcon(icon: Bitmap, size: Int): Bitmap {
         val soft = if (icon.config == Bitmap.Config.HARDWARE) icon.copy(Bitmap.Config.ARGB_8888, false) else icon
         return if (soft.width == size && soft.height == size) soft else Bitmap.createScaledBitmap(soft, size, size, true)
@@ -86,11 +91,16 @@ class DrawerFolderIcon(context: Context, attrs: AttributeSet?) : BubbleTextView(
         return Bitmap.createBitmap(pixels, w, h, Bitmap.Config.ARGB_8888) to bounds
     }
 
-    // The colour most of the icons have just inside the left and top edges of their plate, where
-    // the art seldom reaches.
-    // ponytail: a sample of two points per icon; widen it if a theme's art fills the plate edge.
-    private fun plateColor(icons: List<Bitmap>): Int {
-        val samples = icons.flatMap { icon ->
+    // The plate colour of the icon theme: the colour most of the drawer's first apps have just
+    // inside the left and top edges of their plate, where the art seldom reaches; white (One UI's
+    // folder) when they share none, each app having its own. One answer for every folder, so a
+    // folder's colour does not depend on which apps, or how many, it holds.
+    // ponytail: two points on each of SAMPLE_APPS icons; widen it if a theme's art fills the edge.
+    private fun plateColor(drawerApps: List<AppInfo>, size: Int): Int {
+        val sample = drawerApps.take(SAMPLE_APPS)
+        val key = sample.joinToString(",") { System.identityHashCode(it.bitmap.icon).toString() }
+        if (key == plateKey) return plateValue
+        val samples = sample.map { softwareIcon(it.bitmap.icon, size) }.flatMap { icon ->
             val mid = icon.height / 2
             val x = (0 until icon.width).firstOrNull { Color.alpha(icon.getPixel(it, mid)) >= SOLID }
             val y = (0 until icon.height).firstOrNull { Color.alpha(icon.getPixel(icon.width / 2, it)) >= SOLID }
@@ -100,16 +110,18 @@ class DrawerFolderIcon(context: Context, attrs: AttributeSet?) : BubbleTextView(
             )
         }.filter { Color.alpha(it) >= SOLID }
         // Group near colours (4 bits a channel); a plate colour only if most samples share it.
-        // Icons with no common plate (each app its own colour) take the home folders' colour.
         val common = samples.groupBy { it and QUANT }.maxByOrNull { it.value.size }?.value
-        return if (common != null && common.size * 3 >= samples.size * 2) {
-            common.first()
-        } else {
-            ColorUtils.setAlphaComponent(resolveFolderPreviewColor(context), 255)
-        }
+        plateValue = if (common != null && common.size * 3 >= samples.size * 2) common.first() else Color.WHITE
+        plateKey = key
+        return plateValue
     }
 
     private companion object {
+        const val SAMPLE_APPS = 16
+        const val PREVIEW_CACHE = 24
+        val previews = LruCache<String, Bitmap>(PREVIEW_CACHE)
+        var plateKey: String? = null
+        var plateValue = Color.WHITE
         const val MARGIN = 0.02f
         const val INSET = 0.08f
         const val GAP = 0.03f
