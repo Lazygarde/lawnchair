@@ -1,5 +1,7 @@
 package app.lawnchair.allapps.paged
 
+import android.animation.Animator
+import android.animation.AnimatorListenerAdapter
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Color
@@ -28,6 +30,7 @@ import com.android.launcher3.R
 import com.android.launcher3.dragndrop.DragController
 import com.android.launcher3.dragndrop.DragOptions
 import com.android.launcher3.model.data.AppInfo
+import com.android.launcher3.statemanager.StateManager
 import com.android.launcher3.touch.ItemLongClickListener
 import com.android.launcher3.util.Themes
 import kotlinx.coroutines.launch
@@ -137,21 +140,40 @@ class DrawerFolderView private constructor(
         }
         behind.forEach { it.animate().alpha(1f).setDuration(ANIM_MS) }
         if (animate) {
+            // A listener, not withEndAction: that one is skipped when the animation is cancelled
+            // (the launcher leaving the drawer), which left the panel half faded over home.
             animate().alpha(0f).scaleX(OPEN_SCALE).scaleY(OPEN_SCALE).setDuration(ANIM_MS)
-                .withEndAction { remove() }
+                .setListener(object : AnimatorListenerAdapter() {
+                    override fun onAnimationEnd(animation: Animator) = remove()
+                })
         } else {
+            animate().cancel()
             remove()
         }
     }
 
-    // Android hands the title's focus to the next text field, the drawer's search, which then
-    // opened search mode; it is kept out of reach until this view is gone.
+    // Once, however the panel goes. Android hands the title's focus to the next text field, the
+    // drawer's search, which then opened search mode; it is kept out of reach until this is gone.
     private fun remove() {
+        if (parent == null) return
+        launcher.stateManager.removeStateListener(stateListener)
+        dragListener?.let(launcher.dragController::removeDragListener)
+        dragListener = null
+        behind.forEach { it.animate().cancel(); it.alpha = 1f }
         val search = launcher.appsView.searchUiManager?.editText
         search?.isFocusableInTouchMode = false
         launcher.dragLayer.removeView(this)
         search?.post { search.isFocusableInTouchMode = true }
     }
+
+    // The drawer closing (home, a swipe down, an app opening) takes the panel with it.
+    private val stateListener = object : StateManager.StateListener<LauncherState> {
+        override fun onStateTransitionStart(toState: LauncherState) {
+            if (toState != LauncherState.ALL_APPS) close(false)
+        }
+    }
+
+    private var dragListener: DragController.DragListener? = null
 
     private fun open(editTitle: Boolean) {
         mIsOpen = true
@@ -160,6 +182,7 @@ class DrawerFolderView private constructor(
         scaleX = OPEN_SCALE
         scaleY = OPEN_SCALE
         animate().alpha(1f).scaleX(1f).scaleY(1f).setDuration(ANIM_MS)
+        launcher.stateManager.addStateListener(stateListener)
         behind.forEach { it.animate().alpha(0f).setDuration(ANIM_MS) }
         if (editTitle) {
             title.requestFocus()
@@ -171,21 +194,29 @@ class DrawerFolderView private constructor(
     }
 
     /**
-     * A long press on an app drags it out, as Launcher3's folder does: the drawer takes it out of
-     * the folder first, then the drag starts from the icon under the finger with the drawer as its
-     * source, and the panel closes as it starts.
+     * A long press on an app drags it out, as Launcher3's folder does: the drag starts from the
+     * icon under the finger with the drawer as its source; once it really moves (a long press alone
+     * only opens the app's menu), the drawer takes the app out of the folder and the panel closes.
      */
     private fun dragOut(v: View): Boolean {
         if (!ItemLongClickListener.canStartDrag(launcher) || !launcher.isInState(LauncherState.ALL_APPS)) return false
         val app = v.tag as? AppInfo ?: return false
-        grid.pullOut(folder.id, app.toComponentKey().toString()) ?: return false
-        launcher.dragController.addDragListener(object : DragController.DragListener {
+        dragListener?.let(launcher.dragController::removeDragListener)
+        val listener = object : DragController.DragListener {
             override fun onDragStart(dragObject: DropTarget.DragObject, options: DragOptions) {
-                launcher.dragController.removeDragListener(this)
+                done()
+                if (dragObject.dragInfo !== app) return
+                grid.pullOut(folder.id, app.toComponentKey().toString())
                 close(false)
             }
-            override fun onDragEnd() = launcher.dragController.removeDragListener(this)
-        })
+            override fun onDragEnd() = done()
+            private fun done() {
+                launcher.dragController.removeDragListener(this)
+                if (dragListener === this) dragListener = null
+            }
+        }
+        dragListener = listener
+        launcher.dragController.addDragListener(listener)
         launcher.workspace.beginDragShared(v, grid, DragOptions().apply { fromPagedDrawer = true })
         return true
     }
