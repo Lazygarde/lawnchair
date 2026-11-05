@@ -165,6 +165,7 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         val icon = LayoutInflater.from(context).inflate(R.layout.drawer_folder_icon, parent, false) as DrawerFolderIcon
         icon.bind(folder)
         styleIcon(icon)
+        icon.setOnClickListener { DrawerFolderView.show(launcher, this, folder, editTitle = false) }
         return icon
     }
 
