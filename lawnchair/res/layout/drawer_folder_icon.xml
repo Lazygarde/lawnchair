@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A folder of the paged drawer: all_apps_icon with the folder icon class. -->
+<app.lawnchair.allapps.paged.DrawerFolderIcon xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:launcher="http://schemas.android.com/apk/res-auto"
+    style="@style/BaseIcon.AllApps"
+    android:id="@+id/icon"
+    android:singleLine="false"
+    android:maxLines="2"
+    android:ellipsize="end"
+    launcher:iconDisplay="all_apps"
+    launcher:centerVertically="true" />

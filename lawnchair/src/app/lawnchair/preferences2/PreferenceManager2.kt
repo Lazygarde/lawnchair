@@ -326,6 +326,12 @@ class PreferenceManager2 @Inject constructor(
         defaultValue = "",
     )
 
+    /** Set once the paged drawer's default folders (Google, Microsoft, maker) have been considered. */
+    val drawerDefaultFoldersDone = preference(
+        key = booleanPreferencesKey(name = "drawer_default_folders_done"),
+        defaultValue = false,
+    )
+
     val roundedWidgets = preference(
         key = booleanPreferencesKey(name = "rounded_widgets"),
         defaultValue = context.resources.getBoolean(R.bool.config_default_rounded_widgets),

@@ -7,7 +7,15 @@ import androidx.activity.ComponentActivity
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import app.lawnchair.allapps.paged.DefaultDrawerFolders
+import app.lawnchair.allapps.paged.DrawerCell
 import app.lawnchair.allapps.paged.DrawerOrder
+import app.lawnchair.data.folder.service.FolderService
+import android.os.Build
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
+import kotlinx.coroutines.launch
 import app.lawnchair.data.folder.FolderEntry
 import app.lawnchair.data.folder.model.FolderViewModel
 import app.lawnchair.drawerslots.DrawerSlot
@@ -63,9 +71,15 @@ class LawnchairAlphabeticalAppsList<T>(
     private val pagedEnabled = supportsHostSlots && context.resources.getBoolean(R.bool.config_drawer_paged)
     private var savedOrder: List<String> = emptyList()
     private var pagedApps: List<AppInfo> = emptyList()
+    private var pagedCells: List<DrawerCell> = emptyList()
 
-    /** Called with the ordered apps each time the paged list is rebuilt. */
-    var onPagedAppsChanged: ((List<AppInfo>) -> Unit)? = null
+    // The paged drawer's folders (null until Room answers), and whether the saved order is in.
+    private var drawerFolders: List<FolderEntry>? = null
+    private var orderLoaded = false
+    private var defaultFoldersChecked = false
+
+    /** Called with the cells each time the paged list is rebuilt. */
+    var onPagedAppsChanged: ((List<DrawerCell>) -> Unit)? = null
     private val filteredList = mutableListOf<AppInfo>()
 
     // Re-runs the list when INLINE slots change (see DrawerSlotController.addInlineListener).
@@ -87,8 +101,15 @@ class LawnchairAlphabeticalAppsList<T>(
             try {
                 prefs2.drawerOrder.onEach(launchIn = context.launcher.lifecycleScope) {
                     savedOrder = it.split('\n').filter(String::isNotEmpty)
+                    orderLoaded = true
                     onAppsUpdated()
                 }
+                FolderService.INSTANCE.get(context).getFoldersFlow()
+                    .onEach {
+                        drawerFolders = it
+                        onAppsUpdated()
+                    }
+                    .launchIn(context.launcher.lifecycleScope)
             } catch (t: Throwable) {
                 Log.w(TAG, "Failed to initialize drawer order", t)
             }
@@ -103,17 +124,59 @@ class LawnchairAlphabeticalAppsList<T>(
     fun isPagedMode(): Boolean =
         pagedEnabled && !isWorkAppsList && appsStore.apps.all { it.user == Process.myUserHandle() }
 
-    /** The ordered, filtered apps the paged grid shows. */
-    fun pagedApps(): List<AppInfo> = pagedApps
+    /** The cells the paged grid shows: ordered, filtered apps and folders. */
+    fun pagedCells(): List<DrawerCell> = pagedCells
 
     override fun getAppComparator(): Comparator<AppInfo> {
         if (!isPagedMode()) return super.getAppComparator()
-        val order = DrawerOrder.merge(
-            savedOrder,
-            appsStore.apps.map { DrawerOrder.Entry(it.toComponentKey().toString(), it.firstInstallTime, it.title?.toString().orEmpty()) },
-        )
+        val order = DrawerOrder.merge(savedOrder, appsStore.apps.map(::drawerEntry))
         val index = order.withIndex().associate { (i, key) -> key to i }
         return compareBy { index[it.toComponentKey().toString()] ?: Int.MAX_VALUE }
+    }
+
+    private fun drawerEntry(app: AppInfo) =
+        DrawerOrder.Entry(app.toComponentKey().toString(), app.firstInstallTime, app.title?.toString().orEmpty())
+
+    // Hidden folders are the A-Z drawer's business: in pages their apps show on their own.
+    private fun buildPagedCells(apps: List<AppInfo>): List<DrawerCell> {
+        val byKey = apps.associateBy { it.toComponentKey().toString() }
+        val folders = drawerFolders.orEmpty().filterNot { it.hide }
+        val titles = folders.associate { it.id to it.title }
+        val arranged = DrawerOrder.arrange(
+            savedOrder,
+            apps.map(::drawerEntry),
+            folders.map { DrawerOrder.FolderKeys(it.id, it.itemComponentKeys) },
+        )
+        return arranged.tokens.mapNotNull { token ->
+            val id = DrawerOrder.folderIdOf(token)
+            if (id == null) {
+                byKey[token]?.let(DrawerCell::App)
+            } else {
+                DrawerCell.Folder(id, titles[id].orEmpty(), arranged.members.getValue(id).mapNotNull(byKey::get))
+            }
+        }
+    }
+
+    /**
+     * Once per install, when apps, folders and order are all in: the default folders. On an update
+     * only for a user who never arranged the drawer and has no folder, so nothing they set moves.
+     */
+    private fun maybeAddDefaultFolders() {
+        val folders = drawerFolders ?: return
+        if (defaultFoldersChecked || !orderLoaded || pagedApps.isEmpty()) return
+        defaultFoldersChecked = true
+        val untouched = savedOrder.isEmpty() && folders.isEmpty()
+        val keys = pagedApps.map { it.toComponentKey().toString() }
+        context.launcher.lifecycleScope.launch {
+            if (prefs2.drawerDefaultFoldersDone.get().first()) return@launch
+            prefs2.drawerDefaultFoldersDone.set(true)
+            if (!untouched) return@launch
+            val service = FolderService.INSTANCE.get(context)
+            DefaultDrawerFolders.group(keys, Build.MANUFACTURER).forEach { group ->
+                val id = service.saveFolderInfo(group.title).toInt()
+                service.updateFolderWithItems(id, group.title, group.keys)
+            }
+        }
     }
 
     override fun onDestroy(owner: LifecycleOwner) {
@@ -212,7 +275,9 @@ class LawnchairAlphabeticalAppsList<T>(
         if (isPagedMode()) {
             fastScrollerSections.clear()
             pagedApps = items.mapNotNull { it.itemInfo as? AppInfo }
-            onPagedAppsChanged?.invoke(pagedApps)
+            pagedCells = buildPagedCells(pagedApps)
+            onPagedAppsChanged?.invoke(pagedCells)
+            maybeAddDefaultFolders()
             return
         }
         val perRow = numAppsPerRow

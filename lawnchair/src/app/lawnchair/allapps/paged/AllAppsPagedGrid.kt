@@ -23,6 +23,7 @@ import com.android.launcher3.R
 import com.android.launcher3.celllayout.CellLayoutLayoutParams
 import com.android.launcher3.dragndrop.DragOptions
 import com.android.launcher3.model.data.AppInfo
+import com.android.launcher3.model.data.FolderInfo
 import com.android.launcher3.model.data.ItemInfo
 import com.android.launcher3.util.ComponentKey
 import com.android.launcher3.util.Themes
@@ -30,8 +31,8 @@ import com.android.launcher3.views.ActivityContext
 import kotlinx.coroutines.launch
 
 /**
- * The paged app drawer (`config_drawer_paged`): one [CellLayout] per page, `columns × rows` apps
- * each, filled row-major in the order of [bind].
+ * The paged app drawer (`config_drawer_paged`): one [CellLayout] per page, `columns × rows` cells
+ * each (an app or a folder), filled row-major in the order of [bind].
  *
  * It is also the source and target of a drag that starts on one of its icons: the icons make way
  * as the dragged one moves, the edge of the screen turns the page, and a drop saves the order.
@@ -41,11 +42,12 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
 
     private val activityContext: ActivityContext = ActivityContext.lookupContext<BaseActivity>(context)
     private val launcher: Launcher get() = Launcher.getLauncher(context)
-    private var apps: List<AppInfo> = emptyList()
+    private var cells: List<DrawerCell> = emptyList()
     private val icons = HashMap<String, BubbleTextView>()
 
     // The keys in the order on screen, and whether a bind came in mid-drag.
     private var shownKeys: List<String> = emptyList()
+    private var shownCells: List<DrawerCell> = emptyList()
     private var pendingBind = false
 
     val columns: Int get() = activityContext.deviceProfile.numShownAllAppsColumns
@@ -70,16 +72,17 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         indicator.setMarkersCount(childCount)
     }
 
-    fun bind(apps: List<AppInfo>) {
-        this.apps = apps
+    fun bind(cells: List<DrawerCell>) {
+        this.cells = cells
         // A rebind mid-drag (an install, say) would lose the dragged icon; it runs after the drop.
         if (dragKey != null) {
             pendingBind = true
             return
         }
-        // Same apps in the same order (the drop already arranged them, or an unrelated pref
-        // changed): nothing to rebuild; icon changes reach the icons through AllAppsStore.
-        if (apps.map(::keyOf) == shownKeys && icons.size == apps.size) return
+        // Same cells in the same order (the drop already arranged them, or an unrelated pref
+        // changed): nothing to rebuild; icon changes reach the icons through AllAppsStore. A
+        // folder compares by its title and apps too, so a rename or an added app redraws it.
+        if (cells == shownCells && icons.size == cells.size) return
         rebuild()
     }
 
@@ -107,14 +110,18 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         forEachPage { store.unregisterIconContainer(it.shortcutsAndWidgets) }
         removeAllViews()
         icons.clear()
-        val pages = PagedGridMath.pageCount(apps.size, perPage)
+        val pages = PagedGridMath.pageCount(cells.size, perPage)
         repeat(pages) { addView(newPage(), LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT)) }
-        apps.forEachIndexed { i, app ->
-            val icon = newIcon(this, app)
-            icons[keyOf(app)] = icon
+        cells.forEachIndexed { i, cell ->
+            val icon = when (cell) {
+                is DrawerCell.App -> newIcon(this, cell.app)
+                is DrawerCell.Folder -> newFolderIcon(this, cell)
+            }
+            icons[cell.key] = icon
             place(icon, i)
         }
-        shownKeys = apps.map(::keyOf)
+        shownKeys = cells.map { it.key }
+        shownCells = cells
         // Notification dots and install progress reach the icons this way, as for the A-Z list.
         forEachPage { store.registerIconContainer(it.shortcutsAndWidgets) }
         mPageIndicator?.setMarkersCount(pages)
@@ -148,14 +155,25 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         val layout = if (activityContext.deviceProfile.inv.enableTwoLinesInAllApps) R.layout.all_apps_icon_twoline else R.layout.all_apps_icon
         val icon = LayoutInflater.from(context).inflate(layout, parent, false) as BubbleTextView
         icon.applyFromApplicationInfo(app)
-        // Over the blurred wallpaper, white labels with the home screen's shadow (One UI); the
-        // drawer's own font and size stay.
-        icon.setTextColor(Color.WHITE)
-        icon.setShadowLayer(LABEL_SHADOW_RADIUS, 0f, 0f, Themes.getAttrColor(context, R.attr.workspaceShadowColor))
-        icon.setLongPressTimeoutFactor(1f)
+        styleIcon(icon)
         icon.setOnClickListener(activityContext.itemOnClickListener)
         icon.setOnLongClickListener(activityContext.allAppsItemLongClickListener)
         return icon
+    }
+
+    private fun newFolderIcon(parent: ViewGroup, folder: DrawerCell.Folder): DrawerFolderIcon {
+        val icon = LayoutInflater.from(context).inflate(R.layout.drawer_folder_icon, parent, false) as DrawerFolderIcon
+        icon.bind(folder)
+        styleIcon(icon)
+        return icon
+    }
+
+    // Over the blurred wallpaper, white labels with the home screen's shadow (One UI); the
+    // drawer's own font and size stay.
+    private fun styleIcon(icon: BubbleTextView) {
+        icon.setTextColor(Color.WHITE)
+        icon.setShadowLayer(LABEL_SHADOW_RADIUS, 0f, 0f, Themes.getAttrColor(context, R.attr.workspaceShadowColor))
+        icon.setLongPressTimeoutFactor(1f)
     }
 
     // ---- Drag and drop ----
@@ -183,7 +201,7 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
     override fun onDragEnter(dragObject: DropTarget.DragObject) {
         if (dragObject.dragSource !== this || dragKey != null) return
         dragKey = keyOf(dragObject.dragInfo)
-        dragOrder = apps.map(::keyOf)
+        dragOrder = cells.map { it.key }
         targetIndex = dragOrder!!.indexOf(dragKey)
     }
 
@@ -235,6 +253,8 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
     private fun applyDragOrder(order: List<String>) {
         dragOrder = order
         shownKeys = order
+        val byKey = shownCells.associateBy { it.key }
+        shownCells = order.mapNotNull(byKey::get)
         order.forEachIndexed { i, key ->
             val icon = icons[key] ?: return@forEachIndexed
             val (x, y) = PagedGridMath.cellOf(i, columns, perPage)
@@ -286,7 +306,8 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         launcher.lifecycleScope.launch { prefs.drawerOrder.set(order.joinToString("\n")) }
     }
 
-    private fun keyOf(info: ItemInfo): String = ComponentKey(info.targetComponent, info.user).toString()
+    private fun keyOf(info: ItemInfo): String =
+        if (info is FolderInfo) DrawerOrder.folderToken(info.id) else ComponentKey(info.targetComponent, info.user).toString()
 
     companion object {
         private const val REORDER_DELAY_MS = 150L

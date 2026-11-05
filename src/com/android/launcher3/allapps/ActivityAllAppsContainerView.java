@@ -992,12 +992,12 @@ public class ActivityAllAppsContainerView<T extends Context & ActivityContext>
             barLp.setMargins(barInset, barInset / 2, barInset, barInset / 2);
             addView(mAddToHomeBar, barLp);
             if (mAH.get(AdapterHolder.MAIN).mAppsList instanceof LawnchairAlphabeticalAppsList<?> list) {
-                list.setOnPagedAppsChanged(apps -> {
-                    mPagedGrid.bind(apps);
+                list.setOnPagedAppsChanged(cells -> { // LC: apps and drawer folders
+                    mPagedGrid.bind(cells);
                     updatePagedVisibility();
                     return kotlin.Unit.INSTANCE;
                 });
-                mPagedGrid.bind(list.pagedApps());
+                mPagedGrid.bind(list.pagedCells());
             }
         }
 
