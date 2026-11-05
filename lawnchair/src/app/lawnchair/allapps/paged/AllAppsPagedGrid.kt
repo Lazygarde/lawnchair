@@ -9,6 +9,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import androidx.lifecycle.lifecycleScope
+import app.lawnchair.data.folder.service.FolderService
 import app.lawnchair.preferences2.PreferenceManager2
 import com.android.launcher3.Alarm
 import com.android.launcher3.BaseActivity
@@ -20,8 +21,10 @@ import com.android.launcher3.Launcher
 import com.android.launcher3.LauncherState
 import com.android.launcher3.PagedView
 import com.android.launcher3.R
+import com.android.launcher3.Utilities
 import com.android.launcher3.celllayout.CellLayoutLayoutParams
 import com.android.launcher3.dragndrop.DragOptions
+import com.android.launcher3.folder.PreviewBackground
 import com.android.launcher3.model.data.AppInfo
 import com.android.launcher3.model.data.FolderInfo
 import com.android.launcher3.model.data.ItemInfo
@@ -36,6 +39,8 @@ import kotlinx.coroutines.launch
  *
  * It is also the source and target of a drag that starts on one of its icons: the icons make way
  * as the dragged one moves, the edge of the screen turns the page, and a drop saves the order.
+ * An app held over the middle of another icon for a moment shows a ring; dropped there, it makes
+ * a folder with that app, or joins that folder.
  */
 class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
     PagedView<DrawerPageDots>(context, attrs), DragSource, DropTarget {
@@ -62,6 +67,12 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
     private val reorderAlarm = Alarm(Looper.getMainLooper())
     private val pageFlipAlarm = Alarm(Looper.getMainLooper())
     private var pageFlipDir = 0
+
+    // Folder creation: the icon the dragged app is held over, and whether the hold was long enough.
+    private var mergeKey: String? = null
+    private var mergeReady = false
+    private var mergeRing: PreviewBackground? = null
+    private val mergeAlarm = Alarm(Looper.getMainLooper())
 
     init {
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES)
@@ -166,6 +177,8 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         icon.bind(folder)
         styleIcon(icon)
         icon.setOnClickListener { DrawerFolderView.show(launcher, this, folder, editTitle = false) }
+        // Drags within the drawer, as an app does; it never leaves it (see AddToHomeBar).
+        icon.setOnLongClickListener(activityContext.allAppsItemLongClickListener)
         return icon
     }
 
@@ -217,6 +230,7 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         if (isLayoutRtl) cell[0] = columns - 1 - cell[0]
         // A gap past the last app means "last".
         val index = (nextPage * perPage + cell[1] * columns + cell[0]).coerceAtMost(order.size - 1)
+        if (trackMerge(dragObject, page, order)) return
         if (index != targetIndex) {
             targetIndex = index
             reorderAlarm.setOnAlarmListener { applyDragOrder(DrawerOrder.move(order, dragKey!!, index)) }
@@ -244,7 +258,62 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         }
     }
 
+    /**
+     * Whether the dragged app is held over the middle of another icon: then the icons stay put,
+     * and after [MERGE_DELAY_MS] a ring shows that a drop makes a folder. Uses the dragged icon's
+     * visual centre, as the home screen does.
+     */
+    private fun trackMerge(dragObject: DropTarget.DragObject, page: CellLayout, order: List<String>): Boolean {
+        val center = dragObject.getVisualCenter(null)
+        val x = center[0] - page.left
+        val y = center[1] - page.top
+        val cell = IntArray(2)
+        page.pointToCellExact(x.toInt(), y.toInt(), cell)
+        val (cellX, cellY) = cell[0] to cell[1]
+        if (isLayoutRtl) cell[0] = columns - 1 - cell[0]
+        val key = order.getOrNull(nextPage * perPage + cell[1] * columns + cell[0])
+        val icon = key?.let(icons::get)
+        val inCore = dragObject.dragInfo is AppInfo && key != dragKey && icon != null &&
+            icon.parent?.parent === page && run {
+                val bounds = Rect().also(icon::getIconBounds)
+                val c = floatArrayOf(bounds.exactCenterX(), bounds.exactCenterY())
+                Utilities.getDescendantCoordRelativeToAncestor(icon, page, c, false)
+                PagedGridMath.isInCore(x, y, c[0], c[1], icon.iconSize * MERGE_RADIUS)
+            }
+        if (!inCore) {
+            if (mergeKey != null) clearMerge()
+            return false
+        }
+        reorderAlarm.cancelAlarm()
+        if (key != mergeKey) {
+            clearMerge()
+            mergeKey = key
+            mergeAlarm.setOnAlarmListener {
+                mergeReady = true
+                mergeRing = PreviewBackground(context).apply {
+                    setup(context, activityContext, null, icon!!.measuredWidth, icon.paddingTop)
+                    isClipping = false
+                    animateToAccept(page, cellX, cellY)
+                }
+            }
+            mergeAlarm.setAlarm(MERGE_DELAY_MS)
+        }
+        return true
+    }
+
+    // Leaving an icon's middle: no ring, and the icons make way again from the cell now under it.
+    private fun clearMerge() {
+        mergeAlarm.cancelAlarm()
+        mergeRing?.animateToRest()
+        mergeRing = null
+        mergeKey = null
+        mergeReady = false
+        targetIndex = -1
+    }
+
     override fun onDragExit(dragObject: DropTarget.DragObject) {
+        // DragController exits the target before it drops there: the merge must outlive that.
+        if (!dragObject.dragComplete) clearMerge()
         reorderAlarm.cancelAlarm()
         pageFlipAlarm.cancelAlarm()
         pageFlipDir = 0
@@ -274,8 +343,13 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         reorderAlarm.cancelAlarm()
         val key = dragKey
         val order = dragOrder
-        if (key != null && order != null) {
-            val final = DrawerOrder.move(order, key, targetIndex)
+        val target = mergeKey.takeIf { mergeReady }
+        if (key != null && order != null && target != null) {
+            dropInto(dragObject, key, target, order)
+        } else if (key != null && order != null) {
+            // No cell chosen since the pointer left an icon's middle: the app stays where it is.
+            val to = if (targetIndex >= 0) targetIndex else order.indexOf(key)
+            val final = DrawerOrder.move(order, key, to)
             applyDragOrder(final)
             save(final)
             val icon = icons[key]
@@ -288,8 +362,38 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         }
     }
 
+    /**
+     * The dragged app [key] dropped on [target]: with an app, a new folder of the two in [target]'s
+     * cell, open with its title to name it; with a folder, one more app in it. Room and the order
+     * pref then rebind the grid.
+     */
+    private fun dropInto(dragObject: DropTarget.DragObject, key: String, target: String, order: List<String>) {
+        val byKey = cells.associateBy { it.key }
+        val dragged = (byKey[key] as? DrawerCell.App)?.app ?: return
+        val rest = order.filter { it != key }
+        // The dragged icon is gone at once rather than back in its cell until the rebind.
+        dragObject.deferDragViewCleanupPostAnimation = false
+        icons[key]?.let { (it.parent as? ViewGroup)?.removeView(it) }
+        clearMerge()
+        val service = FolderService.INSTANCE.get(context)
+        when (val cell = byKey[target]) {
+            is DrawerCell.App -> launcher.lifecycleScope.launch {
+                val id = service.saveFolderInfo("").toInt()
+                service.updateFolderWithItems(id, "", listOf(target, key))
+                save(rest.map { if (it == target) DrawerOrder.folderToken(id) else it })
+                DrawerFolderView.show(launcher, this@AllAppsPagedGrid, DrawerCell.Folder(id, "", listOf(cell.app, dragged)), editTitle = true)
+            }
+            is DrawerCell.Folder -> launcher.lifecycleScope.launch {
+                service.updateFolderWithItems(cell.id, cell.title, cell.apps.map { it.toComponentKey().toString() } + key)
+                save(rest)
+            }
+            null -> Unit
+        }
+    }
+
     override fun onDropCompleted(target: View?, d: DropTarget.DragObject, success: Boolean) {
         val wasHere = target === this
+        clearMerge()
         dragKey = null
         dragOrder = null
         targetIndex = -1
@@ -311,10 +415,15 @@ class AllAppsPagedGrid(context: Context, attrs: AttributeSet?) :
         if (info is FolderInfo) DrawerOrder.folderToken(info.id) else ComponentKey(info.targetComponent, info.user).toString()
 
     companion object {
-        private const val REORDER_DELAY_MS = 150L
+        // Long enough to reach the middle of the icon aimed at before it makes way.
+        private const val REORDER_DELAY_MS = 300L
         private const val PAGE_FLIP_DELAY_MS = 500L
         private const val REORDER_ANIMATION_MS = 230
         private const val EDGE_FACTOR = 0.45f
         private const val LABEL_SHADOW_RADIUS = 2f
+        // Held this long over another icon's middle, within this fraction of its size, the ring
+        // shows (Launcher3's home screen uses the same reach).
+        private const val MERGE_DELAY_MS = 400L
+        private const val MERGE_RADIUS = 0.55f
     }
 }

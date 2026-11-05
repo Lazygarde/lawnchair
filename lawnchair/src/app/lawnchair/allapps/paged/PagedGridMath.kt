@@ -1,5 +1,7 @@
 package app.lawnchair.allapps.paged
 
+import kotlin.math.hypot
+
 /** Pagination of the paged drawer: row-major cells, `cols × rows` apps per page. */
 object PagedGridMath {
 
@@ -20,4 +22,8 @@ object PagedGridMath {
         val inPage = index % perPage
         return (inPage % cols) to (inPage / cols)
     }
+
+    /** Whether ([x], [y]) is within [radius] of an icon's centre ([cx], [cy]): a drop makes a folder. */
+    fun isInCore(x: Float, y: Float, cx: Float, cy: Float, radius: Float): Boolean =
+        hypot(x - cx, y - cy) <= radius
 }

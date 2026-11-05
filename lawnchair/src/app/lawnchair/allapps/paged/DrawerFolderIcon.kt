@@ -87,7 +87,7 @@ class DrawerFolderIcon(context: Context, attrs: AttributeSet?) : BubbleTextView(
     }
 
     // The colour most of the icons have just inside the left and top edges of their plate, where
-    // the art seldom reaches; the home folders' colour if none has a plate.
+    // the art seldom reaches.
     // ponytail: a sample of two points per icon; widen it if a theme's art fills the plate edge.
     private fun plateColor(icons: List<Bitmap>): Int {
         val samples = icons.flatMap { icon ->
@@ -99,9 +99,14 @@ class DrawerFolderIcon(context: Context, attrs: AttributeSet?) : BubbleTextView(
                 y?.let { icon.getPixel(icon.width / 2, (it + EDGE_IN).coerceAtMost(icon.height - 1)) },
             )
         }.filter { Color.alpha(it) >= SOLID }
-        // Group near colours (4 bits a channel) and keep the most common group's first sample.
-        return samples.groupBy { it and QUANT }.maxByOrNull { it.value.size }?.value?.first()
-            ?: ColorUtils.setAlphaComponent(resolveFolderPreviewColor(context), 255)
+        // Group near colours (4 bits a channel); a plate colour only if most samples share it.
+        // Icons with no common plate (each app its own colour) take the home folders' colour.
+        val common = samples.groupBy { it and QUANT }.maxByOrNull { it.value.size }?.value
+        return if (common != null && common.size * 3 >= samples.size * 2) {
+            common.first()
+        } else {
+            ColorUtils.setAlphaComponent(resolveFolderPreviewColor(context), 255)
+        }
     }
 
     private companion object {

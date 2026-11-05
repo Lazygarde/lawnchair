@@ -41,6 +41,7 @@ import com.android.launcher3.dragndrop.DragController;
 import com.android.launcher3.dragndrop.DragLayer;
 import com.android.launcher3.dragndrop.DragOptions;
 import com.android.launcher3.dragndrop.DragView;
+import com.android.launcher3.model.data.FolderInfo;
 import com.android.launcher3.model.data.ItemInfo;
 import com.android.launcher3.util.MSDLPlayerWrapper;
 import com.android.launcher3.util.Themes;
@@ -222,7 +223,10 @@ public abstract class ButtonDropTarget extends TextView
             mActive = false;
         } else {
             setupItemInfo(dragObject.dragInfo);
-            mActive = supportsDrop(dragObject.dragInfo);
+            // LC: a paged drawer folder lives in the drawer's own table; Remove or Uninstall would
+            // act on the home screen's row of the same id, so none of them takes it.
+            mActive = supportsDrop(dragObject.dragInfo)
+                    && !(options.fromPagedDrawer && dragObject.dragInfo instanceof FolderInfo);
         }
         setVisibility(mActive ? View.VISIBLE : View.GONE);
 

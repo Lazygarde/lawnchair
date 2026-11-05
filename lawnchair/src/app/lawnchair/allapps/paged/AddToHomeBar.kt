@@ -15,6 +15,7 @@ import com.android.launcher3.LauncherState
 import com.android.launcher3.R
 import com.android.launcher3.dragndrop.DragController
 import com.android.launcher3.dragndrop.DragOptions
+import com.android.launcher3.model.data.AppInfo
 
 /**
  * Shown over the drawer's search bar while an icon of the paged drawer is dragged. Holding the
@@ -54,7 +55,8 @@ class AddToHomeBar(context: Context) : TextView(context), DropTarget, DragContro
     }
 
     override fun onDragStart(dragObject: DropTarget.DragObject, options: DragOptions) {
-        if (options.fromPagedDrawer) visibility = VISIBLE
+        // An app only: a drawer folder is not the home screen's and must never reach it.
+        if (options.fromPagedDrawer && dragObject.dragInfo is AppInfo) visibility = VISIBLE
     }
 
     override fun onDragEnd() {

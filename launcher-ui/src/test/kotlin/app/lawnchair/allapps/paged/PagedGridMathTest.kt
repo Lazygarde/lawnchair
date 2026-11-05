@@ -1,6 +1,8 @@
 package app.lawnchair.allapps.paged
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PagedGridMathTest {
@@ -32,4 +34,15 @@ class PagedGridMathTest {
 
     @Test
     fun cellOf_rowMajorOnSecondPage() = assertEquals(1 to 2, PagedGridMath.cellOf(index = 20 + 9, cols = 4, perPage = 20))
+
+    // ---- Folder creation: the pointer over the middle of another icon ----
+
+    @Test
+    fun core_inside() = assertTrue(PagedGridMath.isInCore(105f, 100f, 100f, 100f, 10f))
+
+    @Test
+    fun core_edgeCounts() = assertTrue(PagedGridMath.isInCore(110f, 100f, 100f, 100f, 10f))
+
+    @Test
+    fun core_outsideDiagonal() = assertFalse(PagedGridMath.isInCore(108f, 108f, 100f, 100f, 10f))
 }
