@@ -268,9 +268,12 @@ class DrawerFolderView private constructor(
         /** Opens [folder] over the drawer; [editTitle] focuses the title, as for a new folder. */
         fun show(launcher: Launcher, grid: AllAppsPagedGrid, folder: DrawerCell.Folder, editTitle: Boolean): DrawerFolderView {
             closeAllOpenViews(launcher)
+            // The header goes too: it holds the host's header slot (a banner ad), which the
+            // panel's title would otherwise cover.
             val behind = listOfNotNull(
                 grid.parent as? View,
                 launcher.appsView.findViewById<View>(R.id.search_container_all_apps),
+                launcher.appsView.floatingHeaderView,
             )
             return DrawerFolderView(launcher, grid, folder, behind).also { it.open(editTitle) }
         }
