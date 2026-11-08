@@ -2110,9 +2110,30 @@ public class Launcher extends StatefulActivity<LauncherState>
     }
 
     @Override
-    @TargetApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
     public void onBackPressed() {
-        getOnBackAnimationCallback().onBackInvoked();
+        if (finishAutoCancelActionMode()) {
+            return;
+        }
+
+        if (mDragController.isDragging()) {
+            mDragController.cancelDrag();
+            return;
+        }
+
+        AbstractFloatingView topView = AbstractFloatingView.getTopOpenView(Launcher.this);
+        if (topView != null && topView.canHandleBack()) {
+            topView.onBackInvoked();
+            return;
+        }
+
+        for (BackPressHandler handler : mBackPressedHandlers) {
+            if (handler.canHandleBack()) {
+                handler.onBackInvoked();
+                return;
+            }
+        }
+
+        onStateBack();
     }
 
     protected void onBackStarted() {

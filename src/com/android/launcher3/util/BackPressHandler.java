@@ -26,4 +26,7 @@ import androidx.annotation.RequiresApi;
 @RequiresApi(api = VERSION_CODES.UPSIDE_DOWN_CAKE)
 public interface BackPressHandler extends OnBackAnimationCallback {
     boolean canHandleBack();
+
+    @Override
+    void onBackInvoked();
 }
