@@ -910,6 +910,13 @@ public class DeviceProfile {
 
         hotseatBarBottomSpacePx *= PreferenceCacheExtensionsKt
             .firstCached(preferenceManager2.getHotseatBottomFactor());
+        // The factor may lower the dock over a gesture bar's handle, but never behind the
+        // buttons of a three-button bar: they take touches, and the inset is their height.
+        // 8dp above them keeps a dock icon's tap apart from a back or home tap.
+        if (!mDeviceProperties.isGestureMode() && !isVerticalBarLayout()) {
+            hotseatBarBottomSpacePx = Math.max(hotseatBarBottomSpacePx,
+                    mInsets.bottom + pxFromDp(8, mMetrics));
+        }
 
         // Extra height needed for additional dock rows
         int extraRowsHeight = (numHotseatRows - 1) * hotseatCellHeightPx;
