@@ -53,7 +53,9 @@ class DrawerFolderIcon(context: Context, attrs: AttributeSet?) : BubbleTextView(
         val area = RectF(margin, margin, size - margin, size - margin)
         canvas.drawBitmap(plate, bounds, area, paint)
 
-        val inset = area.width() * INSET
+        // The grid stays inside the plate: on a round plate its corner cells would stick out
+        // past the circle, so the inset grows until the grid's corners are on the plate.
+        val inset = maxOf(area.width() * INSET, area.width() * (1f - diagonalReach(plate, bounds)) / 2f)
         val gap = area.width() * GAP
         val cell = (area.width() - 2 * inset - 2 * gap) / 3
         val dst = RectF()
@@ -64,6 +66,25 @@ class DrawerFolderIcon(context: Context, attrs: AttributeSet?) : BubbleTextView(
             canvas.drawBitmap(icon, null, dst, paint)
         }
         return bitmap
+    }
+
+    // How far along the diagonal from the centre to a corner of [bounds] the plate stays solid,
+    // as a fraction: about 1 for a square or squircle plate, 0.71 for a circle.
+    private fun diagonalReach(plate: Bitmap, bounds: Rect): Float {
+        val cx = bounds.exactCenterX()
+        val cy = bounds.exactCenterY()
+        var t = 1f
+        while (t > 0.5f) {
+            val corners = listOf(-1f to -1f, 1f to -1f, -1f to 1f, 1f to 1f)
+            val inside = corners.all { (sx, sy) ->
+                val x = (cx + sx * t * bounds.width() / 2f).toInt().coerceIn(0, plate.width - 1)
+                val y = (cy + sy * t * bounds.height() / 2f).toInt().coerceIn(0, plate.height - 1)
+                Color.alpha(plate.getPixel(x, y)) >= SOLID
+            }
+            if (inside) return t
+            t -= 0.01f
+        }
+        return t
     }
 
     // App icons are HARDWARE bitmaps, which a software canvas cannot draw or read: copy them.
