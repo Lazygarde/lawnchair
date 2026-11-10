@@ -39,6 +39,7 @@ import com.android.launcher3.folder.FolderIcon
 import com.android.launcher3.graphics.ThemeManager
 import com.android.launcher3.icons.LauncherIcons
 import com.android.launcher3.logging.StatsLogManager
+import com.android.launcher3.model.ItemInstallQueue
 import com.android.launcher3.model.data.AppInfo as ModelAppInfo
 import com.android.launcher3.model.data.ItemInfo
 import com.android.launcher3.popup.SystemShortcut
@@ -90,6 +91,16 @@ class LawnchairShortcut {
                 true,
             ) != null
         }
+
+        // An app in the drawer onto the home screen, as One UI's popup offers: the first free cell,
+        // or nothing when the app is already there (AddWorkspaceItemsTask skips it).
+        val ADD_TO_HOME =
+            SystemShortcut.Factory { activity: LawnchairLauncher, itemInfo: ItemInfo, originalView: View ->
+                if (itemInfo !is ModelAppInfo) return@Factory null
+                if (PreferenceManager2.getInstance(activity).lockHomeScreen.firstCached()) return@Factory null
+                val packageName = itemInfo.targetComponent?.packageName ?: return@Factory null
+                AddToHome(activity, itemInfo, originalView, packageName)
+            }
 
         val CUSTOMIZE =
             SystemShortcut.Factory { activity: LawnchairLauncher, itemInfo, originalView ->
@@ -270,6 +281,24 @@ class LawnchairShortcut {
                 }
                 .show()
             AbstractFloatingView.closeAllOpenViews(mTarget)
+        }
+    }
+
+    class AddToHome(
+        target: LawnchairLauncher,
+        itemInfo: ItemInfo,
+        originalView: View,
+        private val packageName: String,
+    ) : SystemShortcut<LawnchairLauncher>(
+        R.drawable.ic_add_to_home,
+        R.string.action_add_to_workspace,
+        target,
+        itemInfo,
+        originalView,
+    ) {
+        override fun onClick(view: View) {
+            AbstractFloatingView.closeAllOpenViews(mTarget)
+            ItemInstallQueue.INSTANCE.get(mTarget).queueItem(packageName, mItemInfo.user)
         }
     }
 

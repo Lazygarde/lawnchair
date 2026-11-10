@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A house with a plus, as One UI's "Add to Home". -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="20dp"
+    android:height="20dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FF2D3748"
+        android:pathData="M12,3L4,9v12h9v-2H6v-9l6,-4.5 6,4.5v3h2V9z M17,15h2v2h2v2h-2v2h-2v-2h-2v-2h2z" />
+</vector>

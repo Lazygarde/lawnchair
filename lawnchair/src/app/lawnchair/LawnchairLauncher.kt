@@ -303,6 +303,7 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
         super.getSupportedShortcuts(container),
         Stream.concat(
             Stream.of(
+                LawnchairShortcut.ADD_TO_HOME,
                 LawnchairShortcut.CUSTOMIZE,
                 LawnchairShortcut.OPEN_IN_STORE,
                 LawnchairShortcut.SHARE,

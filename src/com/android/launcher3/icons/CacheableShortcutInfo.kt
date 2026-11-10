@@ -21,7 +21,9 @@ import android.content.Context
 import android.content.pm.LauncherActivityInfo
 import android.content.pm.LauncherApps
 import android.content.pm.ShortcutInfo
+import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.Drawable
+import android.graphics.drawable.InsetDrawable
 import android.os.UserHandle
 import android.util.Log
 import com.android.launcher3.LauncherAppState
@@ -93,6 +95,9 @@ class CacheableShortcutInfo(val shortcutInfo: ShortcutInfo, val appInfo: Applica
 /** Caching logic for CacheableShortcutInfo. */
 object CacheableShortcutCachingLogic : CachingLogic<CacheableShortcutInfo> {
 
+    // ponytail: one fixed inset; a glyph that already carries its own padding comes out smaller.
+    private const val SHORTCUT_GLYPH_INSET = 0.2f
+
     override fun getComponent(info: CacheableShortcutInfo): ComponentName =
         ShortcutKey.fromInfo(info.shortcutInfo).componentName
 
@@ -109,6 +114,10 @@ object CacheableShortcutCachingLogic : CachingLogic<CacheableShortcutInfo> {
                     info.shortcutInfo,
                     LauncherAppState.getIDP(context).fillResIconDpi,
                 )
+                // LC: a plain glyph (not adaptive) was drawn edge to edge, as the icon setting does
+                // not wrap it: in the popup it filled its 35dp square, twice the size of the rows
+                // above. It keeps a margin now, about the size of those rows' icons.
+                ?.let { if (it is AdaptiveIconDrawable) it else InsetDrawable(it, SHORTCUT_GLYPH_INSET) }
                 ?.let { d ->
                     li.createBadgedIconBitmap(
                         d,
@@ -135,6 +144,7 @@ object CacheableShortcutCachingLogic : CachingLogic<CacheableShortcutInfo> {
         // it gets covered by the app's version
         (if (item.shortcutInfo.isDeclaredInManifest) ""
         else item.shortcutInfo.lastChangedTimestamp.toString()) +
-            "-" +
+            // LC: "g1" since glyphs keep a margin, so icons cached before are drawn again
+            "-g1-" +
             provider.getStateForApp(getApplicationInfo(item))
 }
