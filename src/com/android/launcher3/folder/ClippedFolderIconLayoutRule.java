@@ -16,6 +16,10 @@ public class ClippedFolderIconLayoutRule {
     public static final float ICON_OVERLAP_FACTOR = 1 + (MAX_RADIUS_DILATION / 2f);
     private static final float ITEM_RADIUS_SCALE_FACTOR = 1.15f;
     private static final float ITEM_RADIUS_SCALE_FACTOR_SHAPES = 1.2f;
+    // Lawnchair: the preview is laid out for a round background the icons may spill over. On the
+    // rounded square plate the icons touched or crossed its edge, so the whole grid (positions
+    // and icon size alike) is drawn this much smaller about the centre, leaving a margin inside.
+    private static final float PREVIEW_INSET_SCALE = 0.88f;
 
     public static final int EXIT_INDEX = -2;
     public static final int ENTER_INDEX = -3;
@@ -181,11 +185,11 @@ public class ClippedFolderIconLayoutRule {
                 : MAX_RADIUS_DILATION;
         if (Flags.enableLauncherIconShapes()) {
             // Just give custom radius weights for each # of icons.
-            return mRadius * (1 + radiusDilation);
+            return mRadius * (1 + radiusDilation) * PREVIEW_INSET_SCALE;
         } else {
             // Increase radius from 0 up to MAX_RADIUS_DILATION as the number of items increases.
             return mRadius * (1 + radiusDilation * (numItems - MIN_NUM_ITEMS_IN_PREVIEW)
-                    / (MAX_NUM_ITEMS_IN_PREVIEW - MIN_NUM_ITEMS_IN_PREVIEW));
+                    / (MAX_NUM_ITEMS_IN_PREVIEW - MIN_NUM_ITEMS_IN_PREVIEW)) * PREVIEW_INSET_SCALE;
         }
     }
 
@@ -204,7 +208,7 @@ public class ClippedFolderIconLayoutRule {
         } else {
             scale = MIN_SCALE;
         }
-        return scale * mBaselineIconScale;
+        return scale * mBaselineIconScale * PREVIEW_INSET_SCALE;
     }
 
     private float radiusDilationForItems(int numItems) {
