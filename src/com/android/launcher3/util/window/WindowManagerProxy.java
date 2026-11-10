@@ -99,6 +99,14 @@ public class WindowManagerProxy {
     }
 
     /**
+     * LC-Note: Whether the in-process taskbar takes the nav bar's place on a large screen, so the
+     * nav bar inset is dropped. Lawnchair draws one only when its taskbar setting is on.
+     */
+    protected boolean taskbarReplacesNavBar(Context context) {
+        return mTaskbarDrawnInProcess;
+    }
+
+    /**
      * Returns a map of normalized info of internal displays to estimated window bounds
      * for that display
      */
@@ -351,14 +359,17 @@ public class WindowManagerProxy {
 
         int navBarHeightPortrait, navBarHeightLandscape, navbarWidthLandscape;
 
+        // LC-Note: with no taskbar of ours, the system's own nav bar stays at a tablet's bottom.
+        int tabletNavBarHeight = taskbarReplacesNavBar(context) ? 0
+                : mTaskbarDrawnInProcess ? getDimenByName(systemRes, NAVBAR_HEIGHT)
+                : context.getResources().getDimensionPixelSize(R.dimen.taskbar_size);
+
         navBarHeightPortrait = isTablet
-                ? (mTaskbarDrawnInProcess
-                        ? 0 : context.getResources().getDimensionPixelSize(R.dimen.taskbar_size))
+                ? tabletNavBarHeight
                 : getDimenByName(systemRes, NAVBAR_HEIGHT);
 
         navBarHeightLandscape = isTablet
-                ? (mTaskbarDrawnInProcess
-                        ? 0 : context.getResources().getDimensionPixelSize(R.dimen.taskbar_size))
+                ? tabletNavBarHeight
                 : (isTabletOrGesture
                         ? getDimenByName(systemRes, NAVBAR_HEIGHT_LANDSCAPE) : 0);
         navbarWidthLandscape = isTabletOrGesture

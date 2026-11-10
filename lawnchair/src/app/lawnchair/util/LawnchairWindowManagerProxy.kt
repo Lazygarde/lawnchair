@@ -16,6 +16,7 @@ import android.view.WindowInsets
 import android.view.WindowManager
 import androidx.annotation.Keep
 import androidx.annotation.VisibleForTesting
+import app.lawnchair.preferences2.PreferenceManager2
 import com.android.launcher3.Utilities
 import com.android.launcher3.dagger.LauncherAppSingleton
 import com.android.launcher3.testing.shared.ResourceUtils
@@ -97,7 +98,7 @@ class LawnchairWindowManagerProxy @Inject constructor() : WindowManagerProxy(Uti
         val isPortrait = config.screenHeightDp > config.screenWidthDp
 
         val bottomNav = if (isLargeScreen) {
-            0
+            if (taskbarReplacesNavBar(context)) 0 else navInsets.bottom
         } else if (isPortrait) {
             getDimenByName(systemRes, ResourceUtils.NAVBAR_HEIGHT)
         } else if (isGesture) {
@@ -148,6 +149,13 @@ class LawnchairWindowManagerProxy @Inject constructor() : WindowManagerProxy(Uti
         val systemWindowInsets = result.getInsetsIgnoringVisibility(WindowInsets.Type.systemBars() or WindowInsets.Type.displayCutout())
         outInsets.set(systemWindowInsets.left, systemWindowInsets.top, systemWindowInsets.right, systemWindowInsets.bottom)
         return result
+    }
+
+    // The taskbar takes the nav bar's place only when it is on. Without it the gesture bar still
+    // sits at the bottom, and a zero inset puts the hotseat on top of it (unfolded Fold).
+    override fun taskbarReplacesNavBar(context: Context): Boolean {
+        val prefs2 = PreferenceManager2.INSTANCE.get(context)
+        return mTaskbarDrawnInProcess && prefs2.enableTaskbarOnPhone.firstCached(prefs2)
     }
 
     override fun rotateCutout(

@@ -650,6 +650,24 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
         if (SamsungBlur.isUsed(this)) {
             // Darkened a little, as One UI's drawer is, so labels read over a light wallpaper.
             appsView?.let { SamsungBlur.apply(it, targetBlur, SAMSUNG_BLUR_TINT) }
+        } else {
+            // 1c. Elsewhere blur behind is the public path: step 2's surface is a hidden API, which
+            // a third-party app is refused, and step 1 blurs only a translucent window. WM draws it
+            // on the task's dim layer, whose alpha is dimAmount: with no dim the layer is invisible
+            // and the blur with it, so a dim too faint to see keeps it up.
+            window?.let { w ->
+                if (w.attributes.blurBehindRadius != targetBlur) {
+                    w.attributes = w.attributes.apply {
+                        blurBehindRadius = targetBlur
+                        flags = if (targetBlur > 0) {
+                            flags or WindowManager.LayoutParams.FLAG_DIM_BEHIND
+                        } else {
+                            flags and WindowManager.LayoutParams.FLAG_DIM_BEHIND.inv()
+                        }
+                        dimAmount = BLUR_BEHIND_DIM
+                    }
+                }
+            }
         }
 
         // 2. SurfaceControl background blur fallback (wallpaper layer blur in SurfaceFlinger)
@@ -793,6 +811,10 @@ open class LawnchairLauncher : LawnchairLauncherBase() {
 
         // Black at 30%: One UI's drawer is this much darker than the blurred wallpaper.
         private const val SAMSUNG_BLUR_TINT = 0x4D000000
+
+        // Black at 2%: enough for WM to show the dim layer that carries the blur behind, too
+        // faint to darken the drawer (Fold emulator: same brightness as with no blur).
+        private const val BLUR_BEHIND_DIM = 0.02f
 
         var sRestartFlags = 0
 

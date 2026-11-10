@@ -934,6 +934,7 @@ public class DeviceProfile {
                     + hotseatQsbSpace
                     + getHotseatProfile().getQsbVisualHeight()
                     + hotseatBarBottomSpacePx
+                    + getQsbOnTopIconLiftPx(hotseatIconSizePx)
                     + extraRowsHeight;
         } else {
             hotseatBarSizePx = hotseatIconSizePx
@@ -2052,9 +2053,19 @@ public class DeviceProfile {
     /**
      * Returns the number of pixels the hotseat is translated from the bottom of the screen.
      */
+    /**
+     * LC-Note: Lifts the dock icons of an unfolded foldable as the phone layout's {@code space}
+     * does, so they sit as high above the bottom as on the phone. Without it the bottom factor
+     * puts them on the gesture bar's handle.
+     */
+    private int getQsbOnTopIconLiftPx(int hotseatIconSizePx) {
+        return isQsbInline || isTaskbarPresent ? 0 : Math.max(0, hotseatIconSizePx / 2 - 16);
+    }
+
     private int getHotseatBarBottomPadding() {
         if (isQsbOnTop() || isQsbInline) { // LC-Note: isQsbOnTop
-            return hotseatBarBottomSpacePx - (Math.abs(hotseatCellHeightPx - iconSizePx) / 2);
+            return hotseatBarBottomSpacePx + getQsbOnTopIconLiftPx(iconSizePx)
+                    - (Math.abs(hotseatCellHeightPx - iconSizePx) / 2);
         } else {
             return hotseatBarSizePx - hotseatCellHeightPx * numHotseatRows;
         }
