@@ -10,6 +10,7 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import app.lawnchair.LawnchairLauncher
 import com.android.launcher3.InsettableFrameLayout
+import com.android.launcher3.Utilities
 import com.android.systemui.plugins.shared.LauncherOverlayManager
 import com.android.systemui.plugins.shared.LauncherOverlayManager.LauncherOverlay
 import com.android.systemui.plugins.shared.LauncherOverlayManager.LauncherOverlayCallbacks
@@ -88,9 +89,11 @@ class InProcessOverlayManager(
     override fun onFlingVelocity(velocity: Float) {
         if (!isDragging) return
         isDragging = false
-        val target = if (velocity > 200f) {
+        // Raw screen velocity: in RTL the overlay opens with a fling to the left.
+        val openVelocity = if (Utilities.isRtl(launcher.resources)) -velocity else velocity
+        val target = if (openVelocity > 200f) {
             1f
-        } else if (velocity < -200f) {
+        } else if (openVelocity < -200f) {
             0f
         } else {
             (if (currentProgress >= 0.25f) 1f else 0f)

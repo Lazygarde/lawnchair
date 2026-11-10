@@ -1,9 +1,7 @@
 package app.lawnchair.allapps
 
-import android.annotation.SuppressLint
 import android.content.Context
 import android.util.AttributeSet
-import android.view.Gravity
 import android.view.WindowInsets
 import android.view.inputmethod.InputMethodManager
 import androidx.core.graphics.ColorUtils
@@ -65,14 +63,6 @@ class FallbackSearchInputView(context: Context, attrs: AttributeSet?) : Extended
             activeList.requestFocus()
         } else {
             appsView?.requestFocus()
-        }
-    }
-
-    override fun onAttachedToWindow() {
-        super.onAttachedToWindow()
-        if (layoutDirection == LAYOUT_DIRECTION_RTL) {
-            @SuppressLint("RtlHardcoded")
-            gravity = Gravity.RIGHT or Gravity.CENTER
         }
     }
 }

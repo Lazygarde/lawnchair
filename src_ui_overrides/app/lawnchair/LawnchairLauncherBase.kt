@@ -16,6 +16,8 @@
 
 package app.lawnchair
 
+import android.content.Intent
+import app.lawnchair.preferences.PreferenceManager
 import com.android.launcher3.Launcher
 
 /**
@@ -28,5 +30,17 @@ open class LawnchairLauncherBase : Launcher() {
 
     open fun clearStuckBlurOnResumeIfHome() {
         // No-op in withoutQuickstep (no DepthController)
+    }
+
+    /**
+     * The system's gesture-nav contract draws the closing app's icon in a [com.android.launcher3.views.FloatingSurfaceView]
+     * until the system says the animation is done. One UI never says so, and the icon stayed over the
+     * top left of the home screen. The quickstep variant gates the contract on `enableGnc` (off on
+     * One UI by default); this variant lost that gate when the override moved to quickstep.
+     */
+    override fun handleGestureContract(intent: Intent) {
+        if (PreferenceManager.getInstance(this).enableGnc.get()) {
+            super.handleGestureContract(intent)
+        }
     }
 }

@@ -14,6 +14,7 @@ import androidx.lifecycle.setViewTreeLifecycleOwner
 import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import app.lawnchair.theme.color.tokens.ColorTokens
 import com.android.launcher3.Insettable
+import com.android.launcher3.Utilities
 
 /**
  * Container view holding the host app's custom overlay view.
@@ -88,7 +89,7 @@ class InProcessOverlayContainer(
             visibility = VISIBLE
         }
 
-        alpha = progress
+        alpha = 1f
 
         try {
             val baseColor = ColorTokens.ColorBackground.resolveColor(context)
@@ -97,11 +98,17 @@ class InProcessOverlayContainer(
         } catch (_: Throwable) {
         }
 
-        // Subtle parallax slide-in from the left
+        // Slides in with the finger from the start edge, as DragLayer slides the home screen out
+        // by the same width, so the two move as one pager.
         val width = measuredWidth.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
-        val parallaxOffset = (1f - progress) * (width * 0.2f)
-        translationX = -parallaxOffset
+        translationX = -openSign * (1f - progress) * width
     }
+
+    /**
+     * +1 when the overlay opens with a swipe to the right (LTR, it sits left of the home screen),
+     * -1 in RTL, where it sits right of it and every horizontal sign flips.
+     */
+    private val openSign: Float get() = if (Utilities.isRtl(resources)) -1f else 1f
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
         if (!manager.isOverlayOpen()) return false
@@ -118,10 +125,10 @@ class InProcessOverlayContainer(
 
             MotionEvent.ACTION_MOVE -> {
                 velocityTracker?.addMovement(ev)
-                val dx = ev.rawX - initialTouchX
+                val dx = (ev.rawX - initialTouchX) * openSign
                 val dy = ev.rawY - initialTouchY
 
-                // Intercept if dragging to the left (dx < -touchSlop) and predominantly horizontal
+                // Intercept if dragging back towards the home screen and predominantly horizontal
                 if (!isDraggingToClose && dx < -dragCloseThreshold && Math.abs(dx) > Math.abs(dy) * 1.5f) {
                     isDraggingToClose = true
                     parent?.requestDisallowInterceptTouchEvent(true)
@@ -152,7 +159,7 @@ class InProcessOverlayContainer(
             }
 
             MotionEvent.ACTION_MOVE -> {
-                val dx = ev.rawX - initialTouchX
+                val dx = (ev.rawX - initialTouchX) * openSign
                 val dy = ev.rawY - initialTouchY
 
                 if (!isDraggingToClose && dx < -dragCloseThreshold && Math.abs(dx) > Math.abs(dy) * 1.5f) {
@@ -173,12 +180,12 @@ class InProcessOverlayContainer(
                 if (isDraggingToClose) {
                     isDraggingToClose = false
                     velocityTracker?.computeCurrentVelocity(1000)
-                    val xVel = velocityTracker?.xVelocity ?: 0f
+                    val xVel = (velocityTracker?.xVelocity ?: 0f) * openSign
                     velocityTracker?.recycle()
                     velocityTracker = null
 
                     val width = measuredWidth.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
-                    val dx = ev.rawX - initialTouchX
+                    val dx = (ev.rawX - initialTouchX) * openSign
                     val dragRatio = (-dx / width).coerceIn(0f, 1f)
 
                     if (xVel < -200f || dragRatio >= 0.2f) {
