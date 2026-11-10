@@ -1457,6 +1457,10 @@ public class DeviceProfile {
         var allAppLeftRightMarginMultiplier = PreferenceCacheExtensionsKt
                 .firstCached(preferenceManager2.getDrawerLeftRightMarginFactor());
         var marginMultiplier = allAppLeftRightMarginMultiplier * (!getDeviceProperties().isTablet() ? 100 : 10);
+        // LC: on a tablet the margin already centres the grid in the screen, so any multiplier
+        // above 1 pushes the two margins past each other and the drawer is 0 wide. A factor tuned
+        // for phones (a host's 0.42 is 4.2 here) did exactly that on an unfolded Fold.
+        if (getDeviceProperties().isTablet()) marginMultiplier = Math.min(marginMultiplier, 1f);
         allAppsLeftRightMargin = (int) (allAppsLeftRightMargin * marginMultiplier);
 
         // todo fix how drawer padding values are calculated in responsive grid type
