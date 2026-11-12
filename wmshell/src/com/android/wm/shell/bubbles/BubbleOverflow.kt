@@ -24,11 +24,11 @@ import android.graphics.Path
 import android.graphics.drawable.AdaptiveIconDrawable
 import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.InsetDrawable
-import android.util.PathParser
 import android.view.LayoutInflater
 import android.view.View.VISIBLE
 import android.widget.FrameLayout
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.PathParser
 import com.android.launcher3.icons.BubbleIconFactory
 import com.android.wm.shell.R
 import com.android.wm.shell.bubbles.bar.BubbleBarExpandedView

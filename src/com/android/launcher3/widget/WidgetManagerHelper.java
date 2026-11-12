@@ -171,11 +171,8 @@ public class WidgetManagerHelper {
             int widgetCategory) {
         try {
             return mAppWidgetManager.getWidgetPreview(info.provider, info.getProfile(), widgetCategory);
-        } catch (NoSuchMethodError | NoClassDefFoundError e) {
-            Log.w("LC_"+TAG, "loadGeneratedPreview: Error loading widget preview");
-            return null;
-        } catch (IllegalStateException e) {
-            Log.w("LC_"+TAG, "loadGeneratedPreview: Invalid state fetching preview.", e);
+        } catch (Throwable e) {
+            Log.w("LC_"+TAG, "loadGeneratedPreview: Error loading widget preview", e);
             return null;
         }
     }

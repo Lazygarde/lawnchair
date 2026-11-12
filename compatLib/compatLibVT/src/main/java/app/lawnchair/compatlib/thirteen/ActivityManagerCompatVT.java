@@ -67,8 +67,8 @@ public class ActivityManagerCompatVT extends ActivityManagerCompatVS {
         } catch (RemoteException e) {
             Log.e(TAG, "Failed to getTaskSnapshot", e);
             return null;
-        } catch (NoSuchMethodError e) {
-            // Android 13 or 12
+        } catch (Throwable e) {
+            // Android 13 or 12, or non-SDK LinkageError
             return super.getTaskSnapshot(taskId, isLowResolution, takeSnapshotIfNeeded);
         }
     }

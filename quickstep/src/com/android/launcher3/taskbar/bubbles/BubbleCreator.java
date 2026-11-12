@@ -40,7 +40,7 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.InsetDrawable;
 import android.os.UserHandle;
 import android.util.Log;
-import android.util.PathParser;
+import androidx.core.graphics.PathParser;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
 

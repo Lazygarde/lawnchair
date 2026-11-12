@@ -32,7 +32,7 @@ import android.graphics.Matrix;
 import android.graphics.Path;
 import android.graphics.drawable.Drawable;
 import android.util.Log;
-import android.util.PathParser;
+import androidx.core.graphics.PathParser;
 import android.view.LayoutInflater;
 import android.view.View;
 

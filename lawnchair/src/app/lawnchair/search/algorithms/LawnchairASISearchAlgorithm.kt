@@ -58,7 +58,10 @@ class LawnchairASISearchAlgorithm(context: Context) :
     override fun destroy() {
         super.destroy()
         Executors.UI_HELPER_EXECUTOR.execute {
-            searchSession?.destroy()
+            try {
+                searchSession?.destroy()
+            } catch (_: Throwable) {
+            }
         }
         prefs.let {
             it.searchResultShortcuts.removeListener(this)
@@ -71,33 +74,37 @@ class LawnchairASISearchAlgorithm(context: Context) :
     private fun createSearchSession() {
         if (LawnchairQuickstepCompat.ATLEAST_U) return
         Executors.UI_HELPER_EXECUTOR.execute {
-            searchSession?.destroy()
-            val idp = LauncherAppState.getIDP(context)
-            val extras = bundleOf(
-                "launcher.gridSize" to idp.numDatabaseAllAppsColumns,
-                "allowlist_enabled" to false,
-                "launcher.maxInlineIcons" to 3,
-            )
-            // apps or shortcuts
-            var resultTypes = 1 or 2
-            if (prefs.searchResultShortcuts.get()) {
-                resultTypes = resultTypes or 1546
+            try {
+                searchSession?.destroy()
+                val idp = LauncherAppState.getIDP(context)
+                val extras = bundleOf(
+                    "launcher.gridSize" to idp.numDatabaseAllAppsColumns,
+                    "allowlist_enabled" to false,
+                    "launcher.maxInlineIcons" to 3,
+                )
+                // apps or shortcuts
+                var resultTypes = 1 or 2
+                if (prefs.searchResultShortcuts.get()) {
+                    resultTypes = resultTypes or 1546
+                }
+                if (prefs.searchResultPeople.get()) {
+                    resultTypes = resultTypes or 4
+                }
+                if (prefs.searchResultPixelTips.get()) {
+                    resultTypes = resultTypes or 8192
+                    extras.putString("tips_source", "superpacks_tips_source")
+                }
+                if (prefs.searchResultSettings.get()) {
+                    resultTypes = resultTypes or 80
+                    extras.putString("settings_source", "superpacks_settings_source")
+                }
+                val searchContext = SearchContext(resultTypes, 200, extras)
+                val searchSession = context.requireSystemService<SearchUiManager>()
+                    .createSearchSession(searchContext)
+                Executors.MAIN_EXECUTOR.post { this.searchSession = searchSession }
+            } catch (_: Throwable) {
+                // LC-Ignored: SearchUiManager / SearchContext are @SystemApi
             }
-            if (prefs.searchResultPeople.get()) {
-                resultTypes = resultTypes or 4
-            }
-            if (prefs.searchResultPixelTips.get()) {
-                resultTypes = resultTypes or 8192
-                extras.putString("tips_source", "superpacks_tips_source")
-            }
-            if (prefs.searchResultSettings.get()) {
-                resultTypes = resultTypes or 80
-                extras.putString("settings_source", "superpacks_settings_source")
-            }
-            val searchContext = SearchContext(resultTypes, 200, extras)
-            val searchSession = context.requireSystemService<SearchUiManager>()
-                .createSearchSession(searchContext)
-            Executors.MAIN_EXECUTOR.post { this.searchSession = searchSession }
         }
     }
 
@@ -129,24 +136,29 @@ class LawnchairASISearchAlgorithm(context: Context) :
         fun checkSearchCompatibility(context: Context) {
             if (LawnchairQuickstepCompat.ATLEAST_U) return
             Executors.UI_HELPER_EXECUTOR.execute {
-                val searchContext = SearchContext(1 or 2, 200, Bundle())
-                val searchManager = context.requireSystemService<SearchUiManager>()
-                val searchSession: SearchSession = searchManager.createSearchSession(searchContext)
-                val searchQuery = Query("dummy", System.currentTimeMillis())
                 val prefs = PreferenceManager.getInstance(context)
-                val checkDone = AtomicBoolean(false)
-                searchSession.query(searchQuery, Executors.MAIN_EXECUTOR) { targets ->
-                    checkDone.set(true)
-                    finishCompatibilityCheck(prefs, searchSession, targets.isNotEmpty())
+                try {
+                    val searchContext = SearchContext(1 or 2, 200, Bundle())
+                    val searchManager = context.requireSystemService<SearchUiManager>()
+                    val searchSession: SearchSession = searchManager.createSearchSession(searchContext)
+                    val searchQuery = Query("dummy", System.currentTimeMillis())
+                    val checkDone = AtomicBoolean(false)
+                    searchSession.query(searchQuery, Executors.MAIN_EXECUTOR) { targets ->
+                        checkDone.set(true)
+                        finishCompatibilityCheck(prefs, searchSession, targets.isNotEmpty())
+                    }
+                    Handler(Executors.UI_HELPER_EXECUTOR.looper).postDelayed(
+                        {
+                            if (!checkDone.get()) {
+                                finishCompatibilityCheck(prefs, searchSession, false)
+                            }
+                        },
+                        300,
+                    )
+                } catch (_: Throwable) {
+                    // LC-Ignored: SearchUiManager / SearchContext are @SystemApi
+                    Executors.MAIN_EXECUTOR.execute { prefs.deviceSearch.set(false) }
                 }
-                Handler(Executors.UI_HELPER_EXECUTOR.looper).postDelayed(
-                    {
-                        if (!checkDone.get()) {
-                            finishCompatibilityCheck(prefs, searchSession, false)
-                        }
-                    },
-                    300,
-                )
             }
         }
 
@@ -158,7 +170,7 @@ class LawnchairASISearchAlgorithm(context: Context) :
             Executors.MAIN_EXECUTOR.execute { prefs.deviceSearch.set(isCompatible) }
             try {
                 session.destroy()
-            } catch (_: Exception) {
+            } catch (_: Throwable) {
             }
         }
     }

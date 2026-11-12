@@ -73,12 +73,17 @@ constructor(
         lifeCycle.addCloseable { launcherApps.unregisterCallback(modelCallbacks) }
 
         if (Utilities.ATLEAST_V && Flags.enableSupportForArchiving()) {
-            launcherApps.setArchiveCompatibility(
-                ArchiveCompatibilityParams().apply {
-                    setEnableUnarchivalConfirmation(false)
-                    setEnableIconOverlay(!Flags.useNewIconForArchivedApps())
-                }
-            )
+            try {
+                launcherApps.setArchiveCompatibility(
+                    ArchiveCompatibilityParams().apply {
+                        setEnableUnarchivalConfirmation(false)
+                        setEnableIconOverlay(!Flags.useNewIconForArchivedApps())
+                    }
+                )
+            } catch (t: Throwable) {
+                // LC-Ignored: ArchiveCompatibilityParams / setArchiveCompatibility is @SystemApi
+                // and may throw LinkageError or SecurityException on non-system apps.
+            }
         }
 
         // Device profile policy changes

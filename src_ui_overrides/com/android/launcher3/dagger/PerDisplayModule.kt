@@ -63,13 +63,13 @@ object PerDisplayRepositoriesModule {
     @LauncherAppSingleton
     @DisplayContext
     fun provideDisplayContext(
-        repositoryFactory: PerDisplayInstanceRepositoryImpl.Factory<Context>,
-        displayRepository: DisplayRepository,
         @ApplicationContext context: Context,
     ): PerDisplayRepository<Context> {
+        val displayManager = context.getSystemService(DisplayManager::class.java)
+        val defaultDisplay = displayManager.getDisplay(DEFAULT_DISPLAY)!!
         return SingleInstanceRepositoryImpl(
             "DisplayContextRepo",
-            context.createDisplayContext(displayRepository.getDisplay(DEFAULT_DISPLAY)!!),
+            context.createDisplayContext(defaultDisplay),
         )
     }
 
@@ -77,20 +77,20 @@ object PerDisplayRepositoriesModule {
     @LauncherAppSingleton
     @WindowContext
     fun provideWindowContext(
-        repositoryFactory: PerDisplayInstanceRepositoryImpl.Factory<Context>,
-        displayRepository: DisplayRepository,
         @ApplicationContext context: Context,
     ): PerDisplayRepository<Context> {
+        val displayManager = context.getSystemService(DisplayManager::class.java)
+        val defaultDisplay = displayManager.getDisplay(DEFAULT_DISPLAY)!!
         return SingleInstanceRepositoryImpl(
             "DisplayContextRepo",
             if (Utilities.ATLEAST_S) {
                 context.createWindowContext(
-                    displayRepository.getDisplay(DEFAULT_DISPLAY)!!,
+                    defaultDisplay,
                     TYPE_APPLICATION_OVERLAY,
                     /* options= */ null,
                 )
             } else {
-                context.createDisplayContext(displayRepository.getDisplay(DEFAULT_DISPLAY)!!)
+                context.createDisplayContext(defaultDisplay)
             }
         )
     }
@@ -110,7 +110,11 @@ object DisplayLibModule {
         coroutineDispatcherProvider: DispatcherProvider,
     ): DisplayLibComponent {
         val displayManager = context.getSystemService(DisplayManager::class.java)
-        val windowManager = checkNotNull(WindowManagerGlobal.getWindowManagerService())
+        val windowManager = try {
+            WindowManagerGlobal.getWindowManagerService()
+        } catch (t: Throwable) {
+            null
+        }
         return createDisplayLibComponent(
             displayManager,
             windowManager,

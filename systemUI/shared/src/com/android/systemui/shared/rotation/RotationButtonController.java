@@ -723,7 +723,7 @@ public class RotationButtonController {
     private boolean isDeviceStateAutoRotateSettingRefactorEnabled() {
         try {
             return Flags.enableDeviceStateAutoRotateSettingRefactor();
-        } catch (LinkageError e) {
+        } catch (Throwable e) {
             // some ROM may be missing Flags class
             Log.d(TAG, "Flags class not available, disabling device state auto-rotate refactor", e);
             return false;
@@ -749,12 +749,9 @@ public class RotationButtonController {
                 }
                 return false;
             }
-        } catch (LinkageError e) {
-            // Fallback to old method: some ROMs may be missing the Flags class
-            Log.d(TAG, "Flags class not available, using legacy foldable detection", e);
-        } catch (Exception e) {
-            // Fallback for other ROM-specific issues with the new API
-            Log.w(TAG, "Error checking foldable via DeviceStateManager, using legacy method", e);
+        } catch (Throwable e) {
+            // Fallback to old method: some ROMs may be missing the Flags class or throw runtime error
+            Log.d(TAG, "Error or missing Flags class when checking foldable via DeviceStateManager, using legacy method", e);
         }
 
         // Old method: works on all Android versions and ROMs

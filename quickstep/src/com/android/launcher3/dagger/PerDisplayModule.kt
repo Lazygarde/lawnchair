@@ -233,7 +233,11 @@ object DisplayLibModule {
         coroutineDispatcherProvider: DispatcherProvider,
     ): DisplayLibComponent {
         val displayManager = context.getSystemService(DisplayManager::class.java)
-        val windowManager = checkNotNull(WindowManagerGlobal.getWindowManagerService())
+        val windowManager = try {
+            WindowManagerGlobal.getWindowManagerService()
+        } catch (t: Throwable) {
+            null
+        }
         return createDisplayLibComponent(
             displayManager,
             windowManager,

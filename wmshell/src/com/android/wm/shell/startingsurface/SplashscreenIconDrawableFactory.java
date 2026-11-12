@@ -40,7 +40,7 @@ import android.graphics.drawable.Drawable;
 import android.os.Handler;
 import android.os.Trace;
 import android.util.Log;
-import android.util.PathParser;
+import androidx.core.graphics.PathParser;
 import android.window.SplashScreenView;
 
 import com.android.internal.R;

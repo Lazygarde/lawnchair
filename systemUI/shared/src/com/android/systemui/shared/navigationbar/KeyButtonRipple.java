@@ -105,11 +105,17 @@ public class KeyButtonRipple extends Drawable {
         mMaxWidthResource = maxWidthResource;
         mMaxWidth = ctx.getResources().getDimensionPixelSize(maxWidthResource);
         mTargetView = targetView;
-        if ((VERSION.SDK_INT_FULL >= 3600001) && Flags.viewconfigurationApis()) {
-            mTapTimeoutMillis = ViewConfiguration.get(mTargetView.getContext()).getTapTimeoutMillis();
-        } else {
-            mTapTimeoutMillis = ViewConfiguration.getTapTimeout();
+        int tapTimeout = ViewConfiguration.getTapTimeout();
+        if (VERSION.SDK_INT_FULL >= 3600001) {
+            try {
+                if (Flags.viewconfigurationApis()) {
+                    tapTimeout = ViewConfiguration.get(mTargetView.getContext()).getTapTimeoutMillis();
+                }
+            } catch (Throwable ignored) {
+                // LC-Ignored: android.companion.virtualdevice.flags.Flags is non-SDK
+            }
         }
+        mTapTimeoutMillis = tapTimeout;
     }
 
     public void updateResources() {

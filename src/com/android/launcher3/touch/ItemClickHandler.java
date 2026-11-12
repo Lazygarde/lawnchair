@@ -407,7 +407,7 @@ public class ItemClickHandler {
                  * to be False for R8 by default.
                  * */
                 enableMovingContentIntoPrivateSpace = enableMovingContentIntoPrivateSpace();
-            } catch (NoClassDefFoundError | NoSuchMethodError e) {
+            } catch (Throwable e) {
                 enableMovingContentIntoPrivateSpace = false;
             }
         }

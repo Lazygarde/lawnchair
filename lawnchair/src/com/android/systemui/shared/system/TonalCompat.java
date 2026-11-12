@@ -24,26 +24,38 @@ import com.android.launcher3.Utilities;
 
 public class TonalCompat {
 
-    private final Tonal mTonal;
+    private final Object mTonal;
 
     public TonalCompat(Context context) {
-        mTonal = Utilities.ATLEAST_S ? new Tonal(context) : null;
+        Object tonal = null;
+        if (Utilities.ATLEAST_S) {
+            try {
+                tonal = new Tonal(context);
+            } catch (Throwable ignored) {
+                // LC-Ignored: Tonal is a non-SDK internal class
+            }
+        }
+        mTonal = tonal;
     }
 
     public ExtractionInfo extractDarkColors(WallpaperColors colors) {
         if (mTonal != null) {
-            GradientColors darkColors = new GradientColors();
-            mTonal.extractInto(colors, new GradientColors(), darkColors, new GradientColors());
+            try {
+                GradientColors darkColors = new GradientColors();
+                ((Tonal) mTonal).extractInto(colors, new GradientColors(), darkColors, new GradientColors());
 
-            ExtractionInfo result = new ExtractionInfo();
-            result.mainColor = darkColors.getMainColor();
-            result.secondaryColor = darkColors.getSecondaryColor();
-            result.supportsDarkText = darkColors.supportsDarkText();
-            if (colors != null && Utilities.ATLEAST_S) {
-                result.supportsDarkTheme =
-                    (colors.getColorHints() & WallpaperColors.HINT_SUPPORTS_DARK_THEME) != 0;
+                ExtractionInfo result = new ExtractionInfo();
+                result.mainColor = darkColors.getMainColor();
+                result.secondaryColor = darkColors.getSecondaryColor();
+                result.supportsDarkText = darkColors.supportsDarkText();
+                if (colors != null && Utilities.ATLEAST_S) {
+                    result.supportsDarkTheme =
+                        (colors.getColorHints() & WallpaperColors.HINT_SUPPORTS_DARK_THEME) != 0;
+                }
+                return result;
+            } catch (Throwable ignored) {
+                // LC-Ignored: non-SDK internal API
             }
-            return result;
         }
         return new ExtractionInfo();
     }

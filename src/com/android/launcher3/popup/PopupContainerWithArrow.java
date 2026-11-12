@@ -238,7 +238,7 @@ public class PopupContainerWithArrow<T extends Context & ActivityContext>
                  * to be False for R8 by default.
                  * */
                 enableMovingContentIntoPrivateSpace = enableMovingContentIntoPrivateSpace();
-            } catch (NoClassDefFoundError e) {
+            } catch (Throwable e) {
                 /* LC-Ignored: we already set it false by default. */
             }
             

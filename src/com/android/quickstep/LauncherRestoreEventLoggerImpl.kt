@@ -38,8 +38,8 @@ constructor(@ApplicationContext private val context: Context) : LauncherRestoreE
     private val restoreEventLogger: BackupRestoreEventLogger? = if (Utilities.ATLEAST_S) {
         try {
             BackupManager(context).delayedRestoreLogger
-        } catch (e: NoSuchMethodError) {
-            // Lawnchair-TODO: pE-TODO: wtf?
+        } catch (e: Throwable) {
+            // LC-Ignored: delayedRestoreLogger is @SystemApi
             null
         }
     } else {
@@ -59,7 +59,11 @@ constructor(@ApplicationContext private val context: Context) : LauncherRestoreE
         @BackupRestoreError error: String?,
     ) {
         if (enableLauncherBrMetricsFixed()) {
-            restoreEventLogger?.logItemsRestoreFailed(dataType, count, error)
+            try {
+                restoreEventLogger?.logItemsRestoreFailed(dataType, count, error)
+            } catch (e: Throwable) {
+                // LC-Ignored: @SystemApi
+            }
         }
     }
 
@@ -71,7 +75,11 @@ constructor(@ApplicationContext private val context: Context) : LauncherRestoreE
      */
     override fun logLauncherItemsRestored(@BackupRestoreDataType dataType: String, count: Int) {
         if (enableLauncherBrMetricsFixed()) {
-            restoreEventLogger?.logItemsRestored(dataType, count)
+            try {
+                restoreEventLogger?.logItemsRestored(dataType, count)
+            } catch (e: Throwable) {
+                // LC-Ignored: @SystemApi
+            }
         }
     }
 
@@ -82,7 +90,11 @@ constructor(@ApplicationContext private val context: Context) : LauncherRestoreE
      */
     override fun logSingleFavoritesItemRestored(favoritesId: Int) {
         if (enableLauncherBrMetricsFixed()) {
-            restoreEventLogger?.logItemsRestored(favoritesIdToDataType(favoritesId), 1)
+            try {
+                restoreEventLogger?.logItemsRestored(favoritesIdToDataType(favoritesId), 1)
+            } catch (e: Throwable) {
+                // LC-Ignored: @SystemApi
+            }
         }
     }
 
@@ -94,7 +106,11 @@ constructor(@ApplicationContext private val context: Context) : LauncherRestoreE
      */
     override fun logFavoritesItemsRestored(favoritesId: Int, count: Int) {
         if (enableLauncherBrMetricsFixed()) {
-            restoreEventLogger?.logItemsRestored(favoritesIdToDataType(favoritesId), count)
+            try {
+                restoreEventLogger?.logItemsRestored(favoritesIdToDataType(favoritesId), count)
+            } catch (e: Throwable) {
+                // LC-Ignored: @SystemApi
+            }
         }
     }
 
@@ -109,7 +125,11 @@ constructor(@ApplicationContext private val context: Context) : LauncherRestoreE
         @BackupRestoreError error: String?,
     ) {
         if (enableLauncherBrMetricsFixed()) {
-            restoreEventLogger?.logItemsRestoreFailed(favoritesIdToDataType(favoritesId), 1, error)
+            try {
+                restoreEventLogger?.logItemsRestoreFailed(favoritesIdToDataType(favoritesId), 1, error)
+            } catch (e: Throwable) {
+                // LC-Ignored: @SystemApi
+            }
         }
     }
 
@@ -126,11 +146,15 @@ constructor(@ApplicationContext private val context: Context) : LauncherRestoreE
         @BackupRestoreError error: String?,
     ) {
         if (enableLauncherBrMetricsFixed()) {
-            restoreEventLogger?.logItemsRestoreFailed(
-                favoritesIdToDataType(favoritesId),
-                count,
-                error,
-            )
+            try {
+                restoreEventLogger?.logItemsRestoreFailed(
+                    favoritesIdToDataType(favoritesId),
+                    count,
+                    error,
+                )
+            } catch (e: Throwable) {
+                // LC-Ignored: @SystemApi
+            }
         }
     }
 
@@ -140,7 +164,11 @@ constructor(@ApplicationContext private val context: Context) : LauncherRestoreE
      */
     override fun reportLauncherRestoreResults() {
         if (enableLauncherBrMetricsFixed() && restoreEventLogger != null) {
-            BackupManager(context).reportDelayedRestoreResult(restoreEventLogger)
+            try {
+                BackupManager(context).reportDelayedRestoreResult(restoreEventLogger)
+            } catch (e: Throwable) {
+                // LC-Ignored: @SystemApi
+            }
         }
     }
 

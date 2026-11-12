@@ -28,7 +28,7 @@ import android.graphics.Path;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.util.AttributeSet;
-import android.util.PathParser;
+import androidx.core.graphics.PathParser;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewOutlineProvider;
